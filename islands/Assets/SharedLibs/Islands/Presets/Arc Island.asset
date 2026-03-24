@@ -1,0 +1,42 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d755314d4b6bbd444bed11b3abddc351, type: 3}
+  m_Name: Arc Island
+  m_EditorClassIdentifier: 
+  serializationData:
+    SerializedFormat: 2
+    SerializedBytes: 
+    ReferencedUnityObjects: []
+    SerializedBytesString: 
+    Prefab: {fileID: 0}
+    PrefabModificationsReferencedUnityObjects: []
+    PrefabModifications: []
+    SerializationNodes: []
+  displayName: Arc Island
+  recommendedArea: 420
+  recommendedMaxElevation: 1100
+  recommendedAspectRatio: 2.1
+  recommendedReliefComplexity: 0.4
+  footprintFill: 0.7
+  massLayoutType: 2
+  reliefProfile: 2
+  lobeCount: 2
+  bayCount: 2
+  lobeStrength: 0.14
+  bayDepth: 0.12
+  peninsulaChance: 0.25
+  peninsulaStrength: 0.12
+  breakupStrength: 0.14
+  directionalBias: 0.2
+  arcCurvature: 0.32
+  satelliteChance: 0.1
+  ringBreakCount: 0

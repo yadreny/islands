@@ -1,0 +1,42 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d755314d4b6bbd444bed11b3abddc351, type: 3}
+  m_Name: Drowned Hills
+  m_EditorClassIdentifier: 
+  serializationData:
+    SerializedFormat: 2
+    SerializedBytes: 
+    ReferencedUnityObjects: []
+    SerializedBytesString: 
+    Prefab: {fileID: 0}
+    PrefabModificationsReferencedUnityObjects: []
+    PrefabModifications: []
+    SerializationNodes: []
+  displayName: Drowned Hills
+  recommendedArea: 1600
+  recommendedMaxElevation: 800
+  recommendedAspectRatio: 1.7
+  recommendedReliefComplexity: 0.7
+  footprintFill: 0.56
+  massLayoutType: 6
+  reliefProfile: 5
+  lobeCount: 4
+  bayCount: 5
+  lobeStrength: 0.16
+  bayDepth: 0.2
+  peninsulaChance: 0.25
+  peninsulaStrength: 0.12
+  breakupStrength: 0.24
+  directionalBias: 0.18
+  arcCurvature: 0
+  satelliteChance: 0.18
+  ringBreakCount: 0

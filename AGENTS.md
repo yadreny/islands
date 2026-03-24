@@ -23,6 +23,8 @@ Example:
 - Do not rely on `apply_patch`, `Set-Content`, or other write paths for repo files in this environment.
 - Use PowerShell with `[System.IO.File]::ReadAllText/WriteAllText` and explicit `UTF-8 BOM`.
 - This is a hard rule because other write methods have repeatedly broken links, Unicode text, or sandbox refresh.
+- Do not batch many file writes into one huge PowerShell command. Prefer one file per command, or very small batches, and verify results between batches.
+- If a previous large write failed, switch immediately to smaller writes instead of retrying the same big command.
 - After noticeable vault edits, run `python tools/validate-vault.py`.
 
 Required pattern:

@@ -1,0 +1,46 @@
+﻿using System;
+using Sirenix.OdinInspector;
+using UnityEngine;
+
+namespace Islands.Generation
+{
+    [Serializable]
+    public class IslandShapeRequest
+    {
+        [Required, AssetsOnly]
+        public IslandShapePreset Preset;
+
+        [MinValue(1f)]
+        public float TargetArea = 30f;
+
+        [MinValue(0.1f)]
+        public float TargetMaxElevation = 2.4f;
+
+        [Range(50f, 200f)]
+        public float AspectPercent = 120f;
+
+        [Range(25f, 200f)]
+        public float ReliefComplexityPercent = 130f;
+
+        [Range(-180f, 180f)]
+        public float Direction = 35f;
+
+        public int Seed = 12345;
+
+        public int GetStableHashCode()
+        {
+            unchecked
+            {
+                var hash = 17;
+                hash = hash * 31 + (Preset != null ? Preset.GetStableHashCode() : 0);
+                hash = hash * 31 + TargetArea.GetHashCode();
+                hash = hash * 31 + TargetMaxElevation.GetHashCode();
+                hash = hash * 31 + AspectPercent.GetHashCode();
+                hash = hash * 31 + ReliefComplexityPercent.GetHashCode();
+                hash = hash * 31 + Direction.GetHashCode();
+                hash = hash * 31 + Seed;
+                return hash;
+            }
+        }
+    }
+}
