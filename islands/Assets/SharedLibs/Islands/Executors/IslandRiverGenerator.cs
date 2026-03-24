@@ -181,6 +181,7 @@ namespace Islands.Generation
 
             return river;
         }
+
         private void ResolveRiverIntersections(List<Vector4[]> rivers)
         {
             if (rivers == null || rivers.Count < 2)
@@ -212,7 +213,7 @@ namespace Islands.Generation
                         var secondaryRiver = firstLength >= secondLength ? second : first;
                         var secondaryIndex = firstLength >= secondLength ? j : i;
 
-                        if (!TryFindIntersectionFromMouth(mainRiver, secondaryRiver, out var intersection, out var secondarySegmentIndex, out var secondarySegmentT))
+                        if (!TryFindConnectionFromMouth(mainRiver, secondaryRiver, 0.5f, out var intersection, out var secondarySegmentIndex, out var secondarySegmentT))
                         {
                             continue;
                         }
@@ -240,7 +241,7 @@ namespace Islands.Generation
             return Vector2.Distance(ToPlanar(river[0]), ToPlanar(river[river.Length - 1]));
         }
 
-        private bool TryFindIntersectionFromMouth(Vector4[] mainRiver, Vector4[] secondaryRiver, out Vector2 intersection, out int secondarySegmentIndex, out float secondarySegmentT)
+        private bool TryFindConnectionFromMouth(Vector4[] mainRiver, Vector4[] secondaryRiver, float snapDistance, out Vector2 intersection, out int secondarySegmentIndex, out float secondarySegmentT)
         {
             intersection = Vector2.zero;
             secondarySegmentIndex = -1;
@@ -250,18 +251,44 @@ namespace Islands.Generation
             {
                 var mainA = ToPlanar(mainRiver[mainIndex]);
                 var mainB = ToPlanar(mainRiver[mainIndex + 1]);
+                var bestCandidate = default(ConnectionCandidate);
+                var foundCandidate = false;
+
                 for (var secondaryIndex = 0; secondaryIndex < secondaryRiver.Length - 1; secondaryIndex++)
                 {
                     var secondaryA = ToPlanar(secondaryRiver[secondaryIndex]);
                     var secondaryB = ToPlanar(secondaryRiver[secondaryIndex + 1]);
-                    if (!TryIntersectSegments(mainA, mainB, secondaryA, secondaryB, out var point, out _, out var tSecondary))
+
+                    if (TryIntersectSegments(mainA, mainB, secondaryA, secondaryB, out var intersectionPoint, out _, out var tSecondary))
+                    {
+                        var candidate = new ConnectionCandidate(intersectionPoint, secondaryIndex, tSecondary, 0f, true);
+                        if (!foundCandidate || candidate.Distance < bestCandidate.Distance)
+                        {
+                            bestCandidate = candidate;
+                            foundCandidate = true;
+                        }
+
+                        continue;
+                    }
+
+                    if (!TryFindNearSegmentConnection(mainA, mainB, secondaryA, secondaryB, snapDistance, out var nearPoint, out var nearTSecondary, out var nearDistance))
                     {
                         continue;
                     }
 
-                    intersection = point;
-                    secondarySegmentIndex = secondaryIndex;
-                    secondarySegmentT = tSecondary;
+                    var nearCandidate = new ConnectionCandidate(nearPoint, secondaryIndex, nearTSecondary, nearDistance, false);
+                    if (!foundCandidate || nearCandidate.Distance < bestCandidate.Distance)
+                    {
+                        bestCandidate = nearCandidate;
+                        foundCandidate = true;
+                    }
+                }
+
+                if (foundCandidate)
+                {
+                    intersection = bestCandidate.Intersection;
+                    secondarySegmentIndex = bestCandidate.SecondarySegmentIndex;
+                    secondarySegmentT = bestCandidate.SecondarySegmentT;
                     return true;
                 }
             }
@@ -319,6 +346,86 @@ namespace Islands.Generation
 
             intersection = a1 + r * tA;
             return true;
+        }
+
+        private bool TryFindNearSegmentConnection(Vector2 mainA, Vector2 mainB, Vector2 secondaryA, Vector2 secondaryB, float snapDistance, out Vector2 intersection, out float secondaryT, out float distance)
+        {
+            intersection = Vector2.zero;
+            secondaryT = 0f;
+            distance = float.MaxValue;
+
+            ClosestPointsBetweenSegments(mainA, mainB, secondaryA, secondaryB, out var pointOnMain, out var pointOnSecondary, out _, out var tOnSecondary);
+            distance = Vector2.Distance(pointOnMain, pointOnSecondary);
+            if (distance > snapDistance)
+            {
+                return false;
+            }
+
+            intersection = pointOnMain;
+            secondaryT = tOnSecondary;
+            return true;
+        }
+
+        private void ClosestPointsBetweenSegments(Vector2 a0, Vector2 a1, Vector2 b0, Vector2 b1, out Vector2 pointOnA, out Vector2 pointOnB, out float tA, out float tB)
+        {
+            var d1 = a1 - a0;
+            var d2 = b1 - b0;
+            var r = a0 - b0;
+            var a = Vector2.Dot(d1, d1);
+            var e = Vector2.Dot(d2, d2);
+            var f = Vector2.Dot(d2, r);
+
+            if (a <= 0.000001f && e <= 0.000001f)
+            {
+                tA = 0f;
+                tB = 0f;
+                pointOnA = a0;
+                pointOnB = b0;
+                return;
+            }
+
+            if (a <= 0.000001f)
+            {
+                tA = 0f;
+                tB = Mathf.Clamp01(f / e);
+            }
+            else
+            {
+                var c = Vector2.Dot(d1, r);
+                if (e <= 0.000001f)
+                {
+                    tB = 0f;
+                    tA = Mathf.Clamp01(-c / a);
+                }
+                else
+                {
+                    var b = Vector2.Dot(d1, d2);
+                    var denom = a * e - b * b;
+                    if (Mathf.Abs(denom) > 0.000001f)
+                    {
+                        tA = Mathf.Clamp01((b * f - c * e) / denom);
+                    }
+                    else
+                    {
+                        tA = 0f;
+                    }
+
+                    tB = (b * tA + f) / e;
+                    if (tB < 0f)
+                    {
+                        tB = 0f;
+                        tA = Mathf.Clamp01(-c / a);
+                    }
+                    else if (tB > 1f)
+                    {
+                        tB = 1f;
+                        tA = Mathf.Clamp01((b - c) / a);
+                    }
+                }
+            }
+
+            pointOnA = a0 + d1 * tA;
+            pointOnB = b0 + d2 * tB;
         }
 
         private float Cross(Vector2 a, Vector2 b)
@@ -479,6 +586,24 @@ namespace Islands.Generation
             }
 
             return inside;
+        }
+
+        private readonly struct ConnectionCandidate
+        {
+            public ConnectionCandidate(Vector2 intersection, int secondarySegmentIndex, float secondarySegmentT, float distance, bool isExactIntersection)
+            {
+                Intersection = intersection;
+                SecondarySegmentIndex = secondarySegmentIndex;
+                SecondarySegmentT = secondarySegmentT;
+                Distance = distance;
+                IsExactIntersection = isExactIntersection;
+            }
+
+            public Vector2 Intersection { get; }
+            public int SecondarySegmentIndex { get; }
+            public float SecondarySegmentT { get; }
+            public float Distance { get; }
+            public bool IsExactIntersection { get; }
         }
     }
 }
