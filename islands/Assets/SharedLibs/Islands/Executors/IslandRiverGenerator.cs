@@ -10,8 +10,6 @@ namespace Islands.Generation
         private readonly IslandShapeRequest request;
         private readonly Vector2[][] contours;
         private readonly IslandWaterPreset waterPreset;
-        private readonly int riverPointCount;
-        private readonly IslandContourMath contourMath;
         private readonly System.Random random;
 
         public IslandRiverGenerator(IslandShapePreset shapePreset, IslandShapeRequest request, Vector2[][] contours, IslandWaterPreset waterPreset)
@@ -20,8 +18,6 @@ namespace Islands.Generation
             this.request = request ?? throw new ArgumentNullException(nameof(request));
             this.contours = contours;
             this.waterPreset = waterPreset ?? throw new ArgumentNullException(nameof(waterPreset));
-            this.riverPointCount = Mathf.Clamp(riverPointCount, 6, 64);
-            contourMath = new IslandContourMath();
             random = new System.Random(request.Seed ^ 0x45d9f3b);
         }
 
@@ -32,332 +28,181 @@ namespace Islands.Generation
                 return Array.Empty<Vector4[]>();
             }
 
-            var coastline = OpenLoop(contours[0]);
-            var riverCount = ResolveRiverCount(coastline);
-            if (riverCount <= 0)
+            if (waterPreset.FlowSources <= 0)
             {
                 return Array.Empty<Vector4[]>();
             }
 
-            var centroid = ComputeCentroid(coastline);
+            var coastline = OpenLoop(contours[0]);
             var bounds = ComputeBounds(coastline);
+            var centroid = ComputeCentroid(coastline);
             var islandScale = Mathf.Max(1f, Mathf.Min(bounds.width, bounds.height));
-            var acceptedRivers = new List<Vector4[]>(riverCount);
-            var acceptedMouths = new List<Vector2>(riverCount);
-            var baseOffset = contourMath.NextFloat(random) * coastline.Length;
-            var indexStep = coastline.Length / (float)riverCount;
-            var maxAttemptsPerRiver = 8;
+            var mouthSpacing = islandScale * 0.06f;
+            var acceptedRivers = new List<Vector4[]>();
+            var acceptedMouths = new List<Vector2>();
+            var sources = BuildSources(coastline, bounds, centroid, islandScale);
 
-            for (var i = 0; i < riverCount; i++)
+            for (var sourceIndex = 0; sourceIndex < sources.Count; sourceIndex++)
             {
-                for (var attempt = 0; attempt < maxAttemptsPerRiver; attempt++)
+                var source = sources[sourceIndex];
+                var mouth = FindClosestCoastPoint(source, coastline, acceptedMouths, mouthSpacing);
+                if (!mouth.HasValue)
                 {
-                    var jitterScale = waterPreset.MouthJitter + attempt * 0.02f;
-                    var jitter = Mathf.Lerp(-jitterScale, jitterScale, contourMath.NextFloat(random)) * indexStep;
-                    var mouthIndex = Mathf.RoundToInt((baseOffset + i * indexStep + jitter) % coastline.Length);
-                    if (mouthIndex < 0)
-                    {
-                        mouthIndex += coastline.Length;
-                    }
-
-                    var mouth = coastline[mouthIndex];
-                    if (IsTooCloseToExistingMouths(mouth, acceptedMouths, islandScale * waterPreset.MouthSpacing))
-                    {
-                        continue;
-                    }
-
-                    Vector4[] candidate = null;
-                    var allowBranch = acceptedRivers.Count > 0 && contourMath.NextFloat(random) < waterPreset.BranchChance;
-                    if (allowBranch)
-                    {
-                        candidate = BuildBranchRiver(acceptedRivers, coastline, mouthIndex, centroid, islandScale);
-                    }
-
-                    candidate ??= BuildTrunkRiver(coastline, mouthIndex, centroid, islandScale);
-                    if (candidate == null || candidate.Length <= 1)
-                    {
-                        continue;
-                    }
-
-                    acceptedRivers.Add(candidate);
-                    acceptedMouths.Add(mouth);
-                    break;
+                    continue;
                 }
+
+                var river = BuildDirectRiver(source, mouth.Value, coastline, centroid, islandScale, sourceIndex);
+                if (river == null || river.Length < 2)
+                {
+                    continue;
+                }
+
+                acceptedRivers.Add(river);
+                acceptedMouths.Add(mouth.Value);
             }
 
             return acceptedRivers.ToArray();
         }
 
-        private Vector4[] BuildTrunkRiver(Vector2[] coastline, int mouthIndex, Vector2 centroid, float islandScale)
+        private List<Vector2> BuildSources(Vector2[] coastline, Rect bounds, Vector2 centroid, float islandScale)
         {
-            var mouth = coastline[mouthIndex];
-            var inward = ComputeInwardNormal(coastline, mouthIndex);
-            var tangent = ComputeTangent(coastline, mouthIndex);
-            var reliefFactor = Mathf.Lerp(0.95f, 1.30f, ResolveRelief01());
-            var inlandDistance = islandScale * Mathf.Lerp(Mathf.Max(0.24f, waterPreset.InlandReach - 0.08f), waterPreset.InlandReach + 0.12f, contourMath.NextFloat(random)) * reliefFactor;
-            var lateralOffset = islandScale * Mathf.Lerp(-waterPreset.MeanderStrength, waterPreset.MeanderStrength, contourMath.NextFloat(random)) * 0.55f;
-            var sourceAnchor = mouth + inward * inlandDistance + tangent * lateralOffset;
-            var sourceCandidate = Vector2.Lerp(centroid, sourceAnchor, 0.58f);
-            var source = PullInsidePolygon(coastline, centroid, sourceCandidate, 12);
+            var sources = new List<Vector2>(waterPreset.FlowSources);
+            var minSpacing = islandScale * 0.14f;
+            var minCoastClearance = islandScale * 0.12f;
+            var attempts = Mathf.Max(64, waterPreset.FlowSources * 60);
 
-            var minimumLength = islandScale * waterPreset.MinimumRiverLength;
-            if (Vector2.Distance(source, mouth) < minimumLength)
+            for (var attempt = 0; attempt < attempts && sources.Count < waterPreset.FlowSources; attempt++)
             {
-                var fallback = mouth + inward * minimumLength + tangent * lateralOffset * 0.5f;
-                source = PullInsidePolygon(coastline, centroid, fallback, 12);
-            }
+                var candidate = new Vector2(
+                    Mathf.Lerp(bounds.xMin, bounds.xMax, (float)random.NextDouble()),
+                    Mathf.Lerp(bounds.yMin, bounds.yMax, (float)random.NextDouble()));
 
-            if (Vector2.Distance(source, mouth) < islandScale * 0.16f)
-            {
-                return null;
-            }
-
-            var distance = Vector2.Distance(source, mouth);
-            var mouthTangent = tangent;
-            var flowDirection = (mouth - source).sqrMagnitude > 0.0001f ? (mouth - source).normalized : -inward;
-            var bendSign = contourMath.NextFloat(random) < 0.5f ? -1f : 1f;
-            var bendMagnitude = distance * Mathf.Lerp(waterPreset.MeanderStrength * 0.20f, waterPreset.MeanderStrength * 0.55f, contourMath.NextFloat(random));
-            var controlA = source + flowDirection * distance * 0.28f + new Vector2(-flowDirection.y, flowDirection.x) * bendMagnitude * bendSign;
-            var controlB = mouth - inward * distance * 0.18f + mouthTangent * bendMagnitude * bendSign * 0.35f;
-
-            var points = BuildBezierPoints(source, controlA, controlB, mouth, coastline, centroid, waterPreset.RiverPointCount);
-            if (points == null)
-            {
-                return null;
-            }
-
-            SmoothRiverPoints(points, coastline, centroid, 5, waterPreset.SmoothingStrength);
-            points[0] = PullInsidePolygon(coastline, centroid, points[0], 3);
-            points[points.Length - 1] = mouth;
-
-            var mouthWidth = islandScale * Mathf.Lerp(0.010f, 0.026f, waterPreset.RiverAbundance) * Mathf.Lerp(0.9f, 1.15f, contourMath.NextFloat(random));
-            var sourceWidth = mouthWidth * Mathf.Lerp(0.16f, 0.24f, contourMath.NextFloat(random));
-            return BuildWidthProfile(points, sourceWidth, mouthWidth, 1.08f);
-        }
-
-        private Vector4[] BuildBranchRiver(List<Vector4[]> acceptedRivers, Vector2[] coastline, int mouthIndex, Vector2 centroid, float islandScale)
-        {
-            var parentRiver = SelectBranchParent(acceptedRivers, coastline[mouthIndex]);
-            if (parentRiver == null || parentRiver.Length < 4)
-            {
-                return null;
-            }
-
-            var branchProgress = Mathf.Lerp(waterPreset.BranchingStart, 0.86f, contourMath.NextFloat(random));
-            var branchSample = SampleRiver(parentRiver, branchProgress);
-            var branchPoint = branchSample.Point;
-            var downstreamTangent = branchSample.Tangent.sqrMagnitude > 0.0001f ? branchSample.Tangent.normalized : Vector2.down;
-            var branchWidth = branchSample.Width;
-            var mouth = coastline[mouthIndex];
-            var mouthTangent = ComputeTangent(coastline, mouthIndex);
-            var inward = ComputeInwardNormal(coastline, mouthIndex);
-            var toMouth = mouth - branchPoint;
-            var distance = toMouth.magnitude;
-            if (distance < islandScale * 0.12f)
-            {
-                return null;
-            }
-
-            var bendNormal = new Vector2(-downstreamTangent.y, downstreamTangent.x);
-            var branchSign = Mathf.Sign(Vector2.Dot(bendNormal, toMouth));
-            if (Mathf.Abs(branchSign) < 0.5f)
-            {
-                branchSign = contourMath.NextFloat(random) < 0.5f ? -1f : 1f;
-            }
-
-            var bendMagnitude = distance * Mathf.Lerp(waterPreset.MeanderStrength * 0.12f, waterPreset.MeanderStrength * 0.40f, contourMath.NextFloat(random));
-            var controlA = branchPoint + downstreamTangent * distance * 0.24f + bendNormal * bendMagnitude * branchSign;
-            var controlB = mouth - inward * distance * 0.16f + mouthTangent * bendMagnitude * branchSign * 0.30f;
-            var tailPointCount = Mathf.Max(6, waterPreset.RiverPointCount / 2 + 2);
-            var tailPoints = BuildBezierPoints(branchPoint, controlA, controlB, mouth, coastline, centroid, tailPointCount);
-            if (tailPoints == null)
-            {
-                return null;
-            }
-
-            SmoothRiverPoints(tailPoints, coastline, centroid, 4, waterPreset.SmoothingStrength);
-            tailPoints[0] = branchPoint;
-            tailPoints[tailPoints.Length - 1] = mouth;
-
-            var prefix = ExtractPrefix(parentRiver, branchProgress, branchPoint, branchWidth);
-            if (prefix.Count == 0)
-            {
-                return null;
-            }
-
-            var tailStartWidth = branchWidth * Mathf.Lerp(0.92f, 0.98f, contourMath.NextFloat(random));
-            var tailMouthWidth = branchWidth * Mathf.Lerp(0.72f, 0.90f, contourMath.NextFloat(random));
-            var tail = BuildWidthProfile(tailPoints, tailStartWidth, tailMouthWidth, 0.95f);
-
-            var merged = new List<Vector4>(prefix.Count + tail.Length);
-            merged.AddRange(prefix);
-            for (var i = 1; i < tail.Length; i++)
-            {
-                merged.Add(tail[i]);
-            }
-
-            return merged.ToArray();
-        }
-
-        private Vector4[] SelectBranchParent(List<Vector4[]> rivers, Vector2 mouth)
-        {
-            Vector4[] bestRiver = null;
-            var bestDistance = float.MaxValue;
-            for (var i = 0; i < rivers.Count; i++)
-            {
-                var river = rivers[i];
-                var riverMouth = GetRiverPoint(river[river.Length - 1]);
-                var distance = Vector2.Distance(riverMouth, mouth);
-                if (distance < bestDistance)
+                if (!TryBuildValidSource(coastline, centroid, candidate, minCoastClearance, out var source))
                 {
-                    bestDistance = distance;
-                    bestRiver = river;
+                    continue;
+                }
+
+                if (IsTooCloseToExistingPoints(sources, source, minSpacing))
+                {
+                    continue;
+                }
+
+                sources.Add(source);
+            }
+
+            return sources;
+        }
+
+        private Vector2? FindClosestCoastPoint(Vector2 source, Vector2[] coastline, List<Vector2> acceptedMouths, float mouthSpacing)
+        {
+            Vector2? bestPoint = null;
+            var bestDistanceSq = float.MaxValue;
+
+            for (var i = 0; i < coastline.Length; i++)
+            {
+                var a = coastline[i];
+                var b = coastline[(i + 1) % coastline.Length];
+                var candidate = ClosestPointOnSegment(source, a, b);
+                if (IsTooCloseToExistingPoints(acceptedMouths, candidate, mouthSpacing))
+                {
+                    continue;
+                }
+
+                var distanceSq = (candidate - source).sqrMagnitude;
+                if (distanceSq < bestDistanceSq)
+                {
+                    bestDistanceSq = distanceSq;
+                    bestPoint = candidate;
                 }
             }
 
-            return bestRiver;
+            return bestPoint;
         }
 
-        private RiverSample SampleRiver(Vector4[] river, float progress)
+        private Vector4[] BuildDirectRiver(Vector2 source, Vector2 mouth, Vector2[] coastline, Vector2 centroid, float islandScale, int widthSeedOffset)
         {
-            progress = Mathf.Clamp01(progress);
-            var scaled = progress * (river.Length - 1);
-            var index = Mathf.Clamp(Mathf.FloorToInt(scaled), 0, river.Length - 2);
-            var t = scaled - index;
-            var a = river[index];
-            var b = river[index + 1];
-            var pointA = GetRiverPoint(a);
-            var pointB = GetRiverPoint(b);
-            var point = Vector2.Lerp(pointA, pointB, t);
-            var tangent = pointB - pointA;
-            var width = Mathf.Lerp(a.w, b.w, t);
-            return new RiverSample(point, tangent, width);
-        }
-
-        private List<Vector4> ExtractPrefix(Vector4[] river, float progress, Vector2 branchPoint, float branchWidth)
-        {
-            progress = Mathf.Clamp01(progress);
-            var scaled = progress * (river.Length - 1);
-            var index = Mathf.Clamp(Mathf.FloorToInt(scaled), 0, river.Length - 2);
-            var prefix = new List<Vector4>(index + 2);
-            for (var i = 0; i <= index; i++)
-            {
-                prefix.Add(river[i]);
-            }
-
-            var lastPoint = prefix.Count > 0 ? GetRiverPoint(prefix[prefix.Count - 1]) : Vector2.positiveInfinity;
-            if (!Approximately(lastPoint, branchPoint))
-            {
-                prefix.Add(new Vector4(branchPoint.x, 0f, branchPoint.y, branchWidth));
-            }
-            else
-            {
-                prefix[prefix.Count - 1] = new Vector4(branchPoint.x, 0f, branchPoint.y, branchWidth);
-            }
-
-            return prefix;
-        }
-
-        private Vector2[] BuildBezierPoints(Vector2 start, Vector2 controlA, Vector2 controlB, Vector2 end, Vector2[] coastline, Vector2 centroid, int pointCount)
-        {
-            if (pointCount < 2)
+            var points = BuildMeanderPoints(source, mouth, coastline, centroid);
+            if (points == null || points.Length < 2)
             {
                 return null;
             }
 
-            var points = new Vector2[pointCount];
-            for (var i = 0; i < pointCount; i++)
-            {
-                var t = pointCount == 1 ? 1f : i / (float)(pointCount - 1);
-                var point = EvaluateCubicBezier(start, controlA, controlB, end, t);
-                if (i > 0 && i < pointCount - 1)
-                {
-                    point = PullInsidePolygon(coastline, centroid, point, 3);
-                }
-                else if (i == pointCount - 1)
-                {
-                    point = end;
-                }
-
-                points[i] = point;
-            }
-
-            return points;
+            var mouthWidth = islandScale * Mathf.Lerp(0.010f, 0.026f, Mathf.Clamp01(waterPreset.FlowSources / 8f));
+            var widthRandom = new System.Random(request.Seed + widthSeedOffset);
+            var sourceWidth = mouthWidth * Mathf.Lerp(0.18f, 0.26f, (float)widthRandom.NextDouble());
+            return BuildWidthProfile(points, sourceWidth, mouthWidth);
         }
 
-        private Vector4[] BuildWidthProfile(Vector2[] points, float startWidth, float endWidth, float power)
+        private Vector2[] BuildMeanderPoints(Vector2 source, Vector2 mouth, Vector2[] coastline, Vector2 centroid)
+        {
+            var axis = mouth - source;
+            var totalLength = axis.magnitude;
+            if (totalLength <= 0.0001f)
+            {
+                return new[] { source, mouth };
+            }
+
+            var points = new List<Vector2>();
+            points.Add(source);
+
+            var direction = axis / totalLength;
+            var normal = new Vector2(-direction.y, direction.x);
+            var halfLength = Mathf.Max(0.05f, waterPreset.MeanderLength * 0.5f);
+            var halfWidth = waterPreset.MeanderWidth * 0.5f;
+            var maxInteriorPoints = Mathf.Max(0, waterPreset.RiverPointCount - 2);
+            var progress = halfLength;
+            var side = 1f;
+
+            while (progress < totalLength && points.Count - 1 < maxInteriorPoints)
+            {
+                var pointOnAxis = source + direction * progress;
+                var meanderPoint = pointOnAxis + normal * (halfWidth * side);
+                points.Add(meanderPoint);
+                progress += halfLength;
+                side *= -1f;
+            }
+
+            points.Add(mouth);
+            return points.ToArray();
+        }
+
+        private Vector4[] BuildWidthProfile(Vector2[] points, float sourceWidth, float mouthWidth)
         {
             var river = new Vector4[points.Length];
             for (var i = 0; i < points.Length; i++)
             {
                 var t = points.Length == 1 ? 1f : i / (float)(points.Length - 1);
-                var width = Mathf.Lerp(startWidth, endWidth, Mathf.Pow(t, power));
+                var width = Mathf.Lerp(sourceWidth, mouthWidth, t);
                 river[i] = new Vector4(points[i].x, 0f, points[i].y, width);
             }
 
             return river;
         }
 
-        private void SmoothRiverPoints(Vector2[] points, Vector2[] coastline, Vector2 centroid, int passes, float strength)
+        private Vector2 ClosestPointOnSegment(Vector2 point, Vector2 a, Vector2 b)
         {
-            if (points == null || points.Length < 3)
+            var ab = b - a;
+            var abLengthSq = ab.sqrMagnitude;
+            if (abLengthSq <= 0.000001f)
             {
-                return;
+                return a;
             }
 
-            var buffer = new Vector2[points.Length];
-            for (var pass = 0; pass < passes; pass++)
-            {
-                buffer[0] = points[0];
-                buffer[points.Length - 1] = points[points.Length - 1];
-                for (var i = 1; i < points.Length - 1; i++)
-                {
-                    var average = (points[i - 1] + points[i + 1]) * 0.5f;
-                    var smoothed = Vector2.Lerp(points[i], average, strength);
-                    buffer[i] = PullInsidePolygon(coastline, centroid, smoothed, 2);
-                }
-
-                Array.Copy(buffer, points, points.Length);
-            }
+            var t = Mathf.Clamp01(Vector2.Dot(point - a, ab) / abLengthSq);
+            return a + ab * t;
         }
 
-        private bool IsTooCloseToExistingMouths(Vector2 candidateMouth, List<Vector2> acceptedMouths, float minDistance)
+        private bool IsTooCloseToExistingPoints(List<Vector2> points, Vector2 candidate, float minDistance)
         {
-            for (var i = 0; i < acceptedMouths.Count; i++)
+            for (var i = 0; i < points.Count; i++)
             {
-                if (Vector2.Distance(candidateMouth, acceptedMouths[i]) < minDistance)
+                if (Vector2.Distance(candidate, points[i]) < minDistance)
                 {
                     return true;
                 }
             }
 
             return false;
-        }
-
-        private Vector2 GetRiverPoint(Vector4 value)
-        {
-            return new Vector2(value.x, value.z);
-        }
-
-        private int ResolveRiverCount(Vector2[] coastline)
-        {
-            var areaFactor = Mathf.Sqrt(Mathf.Max(1f, request.TargetArea) / Mathf.Max(1f, shapePreset.RecommendedArea));
-            var sizeFactor = Mathf.Lerp(0.85f, 1.35f, Mathf.Clamp01(areaFactor));
-            var reliefFactor = Mathf.Lerp(0.85f, 1.25f, ResolveRelief01());
-            var baseCount = Mathf.Lerp(0f, 8f, waterPreset.RiverAbundance);
-            var count = Mathf.RoundToInt(baseCount * sizeFactor * reliefFactor);
-            if (waterPreset.RiverAbundance > 0.08f && count == 0 && coastline.Length > 0)
-            {
-                count = 1;
-            }
-
-            return Mathf.Clamp(count, 0, 12);
-        }
-
-        private float ResolveRelief01()
-        {
-            var finalRelief = shapePreset.RecommendedReliefComplexity * request.ReliefComplexityPercent / 100f;
-            return Mathf.InverseLerp(0.05f, 1.5f, Mathf.Clamp(finalRelief, 0.05f, 1.5f));
         }
 
         private Vector2[] OpenLoop(Vector2[] closedLoop)
@@ -378,17 +223,6 @@ namespace Islands.Generation
             return open;
         }
 
-        private Vector2 ComputeCentroid(Vector2[] polygon)
-        {
-            var sum = Vector2.zero;
-            for (var i = 0; i < polygon.Length; i++)
-            {
-                sum += polygon[i];
-            }
-
-            return polygon.Length > 0 ? sum / polygon.Length : Vector2.zero;
-        }
-
         private Rect ComputeBounds(Vector2[] loop)
         {
             var min = new Vector2(float.MaxValue, float.MaxValue);
@@ -402,42 +236,79 @@ namespace Islands.Generation
             return Rect.MinMaxRect(min.x, min.y, max.x, max.y);
         }
 
-        private Vector2 ComputeTangent(Vector2[] loop, int index)
+        private Vector2 ComputeCentroid(Vector2[] polygon)
         {
-            var prev = loop[(index - 1 + loop.Length) % loop.Length];
-            var next = loop[(index + 1) % loop.Length];
-            var tangent = next - prev;
-            return tangent.sqrMagnitude > 0.0001f ? tangent.normalized : Vector2.right;
-        }
-
-        private Vector2 ComputeInwardNormal(Vector2[] loop, int index)
-        {
-            var tangent = ComputeTangent(loop, index);
-            var signedArea = contourMath.ComputePolygonArea(loop);
-            var outward = signedArea >= 0f
-                ? new Vector2(tangent.y, -tangent.x)
-                : new Vector2(-tangent.y, tangent.x);
-            return -outward.normalized;
-        }
-
-        private Vector2 PullInsidePolygon(Vector2[] polygon, Vector2 centroid, Vector2 point, int maxIterations)
-        {
-            if (IsPointInsidePolygon(polygon, point))
+            var sum = Vector2.zero;
+            for (var i = 0; i < polygon.Length; i++)
             {
-                return point;
+                sum += polygon[i];
             }
 
-            var current = point;
-            for (var i = 0; i < maxIterations; i++)
+            return polygon.Length > 0 ? sum / polygon.Length : Vector2.zero;
+        }
+
+        private float ComputeDistanceToCoast(Vector2 point, Vector2[] coastline)
+        {
+            var bestDistance = float.MaxValue;
+            for (var i = 0; i < coastline.Length; i++)
             {
-                current = Vector2.Lerp(current, centroid, 0.25f);
-                if (IsPointInsidePolygon(polygon, current))
+                var a = coastline[i];
+                var b = coastline[(i + 1) % coastline.Length];
+                var closest = ClosestPointOnSegment(point, a, b);
+                var distance = Vector2.Distance(point, closest);
+                if (distance < bestDistance)
                 {
-                    return current;
+                    bestDistance = distance;
                 }
             }
 
-            return centroid;
+            return bestDistance;
+        }
+
+        private bool TryBuildValidSource(Vector2[] coastline, Vector2 centroid, Vector2 candidate, float minCoastClearance, out Vector2 source)
+        {
+            source = centroid;
+            var current = candidate;
+            for (var i = 0; i < 8; i++)
+            {
+                current = Vector2.Lerp(current, centroid, 0.25f);
+                if (IsPointInsidePolygon(coastline, current) && ComputeDistanceToCoast(current, coastline) >= minCoastClearance)
+                {
+                    return TryProjectToSafeInterior(coastline, centroid, current, minCoastClearance, out source);
+                }
+            }
+
+            return TryProjectToSafeInterior(coastline, centroid, current, minCoastClearance, out source);
+        }
+
+        private bool TryProjectToSafeInterior(Vector2[] coastline, Vector2 centroid, Vector2 candidate, float minCoastClearance, out Vector2 source)
+        {
+            source = centroid;
+            var low = 0f;
+            var high = 1f;
+            var found = false;
+            var best = centroid;
+
+            for (var i = 0; i < 20; i++)
+            {
+                var t = (low + high) * 0.5f;
+                var point = Vector2.Lerp(centroid, candidate, t);
+                var isInside = IsPointInsidePolygon(coastline, point);
+                var hasClearance = isInside && ComputeDistanceToCoast(point, coastline) >= minCoastClearance;
+                if (hasClearance)
+                {
+                    found = true;
+                    best = point;
+                    low = t;
+                }
+                else
+                {
+                    high = t;
+                }
+            }
+
+            source = best;
+            return found;
         }
 
         private bool IsPointInsidePolygon(Vector2[] polygon, Vector2 point)
@@ -456,34 +327,6 @@ namespace Islands.Generation
             }
 
             return inside;
-        }
-
-        private Vector2 EvaluateCubicBezier(Vector2 a, Vector2 b, Vector2 c, Vector2 d, float t)
-        {
-            var u = 1f - t;
-            return u * u * u * a +
-                   3f * u * u * t * b +
-                   3f * u * t * t * c +
-                   t * t * t * d;
-        }
-
-        private bool Approximately(Vector2 a, Vector2 b)
-        {
-            return Vector2.SqrMagnitude(a - b) <= 0.000001f;
-        }
-
-        private readonly struct RiverSample
-        {
-            public RiverSample(Vector2 point, Vector2 tangent, float width)
-            {
-                Point = point;
-                Tangent = tangent;
-                Width = width;
-            }
-
-            public Vector2 Point { get; }
-            public Vector2 Tangent { get; }
-            public float Width { get; }
         }
     }
 }

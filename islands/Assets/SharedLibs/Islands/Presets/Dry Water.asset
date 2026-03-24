@@ -21,12 +21,8 @@ MonoBehaviour:
     PrefabModificationsReferencedUnityObjects: []
     PrefabModifications: []
     SerializationNodes: []
-  riverAbundance: 0.2
-  inlandReach: 0.55
-  minimumRiverLength: 0.2
-  meanderStrength: 0.014
-  smoothingStrength: 0.84
-  mouthJitter: 0.08
-  mouthSpacing: 0.08
-  branchChance: 0.18
-  branchingStart: 0.7
+  flowSources: 1
+  branchProbability: 0.04
+  riverPointCount: 14
+  meanderLength: 3
+  meanderWidth: 1.5

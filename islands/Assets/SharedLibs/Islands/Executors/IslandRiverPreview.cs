@@ -1,4 +1,5 @@
-﻿using Sirenix.OdinInspector;
+﻿using System.Collections.Generic;
+using Sirenix.OdinInspector;
 using UnityEngine;
 
 namespace Islands.Generation
@@ -11,6 +12,12 @@ namespace Islands.Generation
 
         [SerializeField]
         private Color riverColor = new Color(0.18f, 0.60f, 1.00f, 1f);
+
+        [SerializeField]
+        private Color sourceColor = new Color(0.25f, 0.95f, 1.00f, 1f);
+
+        [SerializeField, MinValue(0.01f)]
+        private float sourceMarkerRadius = 0.2f;
 
         private Vector4[][] cachedRivers;
         private int cachedHash;
@@ -62,6 +69,57 @@ namespace Islands.Generation
             {
                 DrawRiver(cachedRivers[i]);
             }
+
+            DrawSources();
+        }
+
+        private void DrawSources()
+        {
+            if (cachedRivers == null || cachedRivers.Length == 0)
+            {
+                return;
+            }
+
+            var sourcePoints = CollectSourcePoints();
+            Gizmos.color = sourceColor;
+            for (var i = 0; i < sourcePoints.Count; i++)
+            {
+                Gizmos.DrawSphere(ToWorld(sourcePoints[i]), sourceMarkerRadius);
+            }
+        }
+
+        private List<Vector4> CollectSourcePoints()
+        {
+            var result = new List<Vector4>();
+            var epsilon = Mathf.Max(0.02f, sourceMarkerRadius * 0.75f);
+
+            for (var riverIndex = 0; riverIndex < cachedRivers.Length; riverIndex++)
+            {
+                var river = cachedRivers[riverIndex];
+                if (river == null || river.Length == 0)
+                {
+                    continue;
+                }
+
+                var candidate = river[0];
+                var candidatePoint = ToPlanar(candidate);
+                var isDuplicate = false;
+                for (var i = 0; i < result.Count; i++)
+                {
+                    if (Vector2.Distance(candidatePoint, ToPlanar(result[i])) <= epsilon)
+                    {
+                        isDuplicate = true;
+                        break;
+                    }
+                }
+
+                if (!isDuplicate)
+                {
+                    result.Add(candidate);
+                }
+            }
+
+            return result;
         }
 
         private void EnsureUpToDate()
@@ -120,6 +178,11 @@ namespace Islands.Generation
             {
                 Gizmos.DrawLine(ToWorld(river[i]), ToWorld(river[i + 1]));
             }
+        }
+
+        private Vector2 ToPlanar(Vector4 point)
+        {
+            return new Vector2(point.x, point.z);
         }
 
         private Vector3 ToWorld(Vector4 point)

@@ -348,7 +348,7 @@ Transform:
   m_GameObject: {fileID: 410087039}
   serializedVersion: 2
   m_LocalRotation: {x: 0.40821788, y: -0.23456968, z: 0.10938163, w: 0.8754261}
-  m_LocalPosition: {x: 0, y: 3, z: 0}
+  m_LocalPosition: {x: 1000, y: 3, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -420,7 +420,7 @@ Transform:
   m_GameObject: {fileID: 832575517}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 1000, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -435,7 +435,9 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1660782149}
-  - component: {fileID: 1660782148}
+  - component: {fileID: 1660782152}
+  - component: {fileID: 1660782151}
+  - component: {fileID: 1660782150}
   m_Layer: 0
   m_Name: GameObject
   m_TagString: Untagged
@@ -443,7 +445,45 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1660782148
+--- !u!4 &1660782149
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1660782147}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1660782150
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1660782147}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3128b7565ed866240818a186cac3e702, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  serializationData:
+    SerializedFormat: 2
+    SerializedBytes: 
+    ReferencedUnityObjects: []
+    SerializedBytesString: 
+    Prefab: {fileID: 0}
+    PrefabModificationsReferencedUnityObjects: []
+    PrefabModifications: []
+    SerializationNodes: []
+  generationContext: {fileID: 1660782152}
+  riverColor: {r: 0.18, g: 0.6, b: 1, a: 1}
+--- !u!114 &1660782151
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -464,37 +504,41 @@ MonoBehaviour:
     PrefabModificationsReferencedUnityObjects: []
     PrefabModifications: []
     SerializationNodes: []
-  request:
-    Preset: {fileID: 11400000, guid: 5b231911f4744d8e953432db5a59823c, type: 2}
-    TargetArea: 30
-    TargetMaxElevation: 2.4
-    AspectPercent: 120
-    ReliefComplexityPercent: 130
-    Direction: 35
-    Seed: 12345
-  contourSegments: 256
-  regenerateAutomatically: 1
-  gizmoHeight: 0
-  drawWhenNotSelected: 0
-  drawBounds: 1
+  generationContext: {fileID: 1660782152}
   coastlineColor: {r: 0.2, g: 0.9, b: 0.5, a: 1}
   secondaryContourColor: {r: 1, g: 0.85, b: 0.2, a: 1}
-  boundsColor: {r: 1, g: 0.4, b: 0.2, a: 1}
---- !u!4 &1660782149
-Transform:
+--- !u!114 &1660782152
+MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1660782147}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: af26bc253d2724c4b8705b2fa101d4f7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  serializationData:
+    SerializedFormat: 2
+    SerializedBytes: 
+    ReferencedUnityObjects: []
+    SerializedBytesString: 
+    Prefab: {fileID: 0}
+    PrefabModificationsReferencedUnityObjects: []
+    PrefabModifications: []
+    SerializationNodes: []
+  shapePreset: {fileID: 11400000, guid: a7600dfc63304f30bcedc150ac9346de, type: 2}
+  waterPreset: {fileID: 11400000, guid: 4f239bf362f64ecdbf8f4d4d6f7a8b9c, type: 2}
+  request:
+    TargetArea: 100
+    TargetMaxElevation: 2.4
+    AspectPercent: 120
+    ReliefComplexityPercent: 130
+    CoastlineComplexity: 3.3
+    OffshoreIsletCount: 0
+    Direction: 0
+    Seed: 12430
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
