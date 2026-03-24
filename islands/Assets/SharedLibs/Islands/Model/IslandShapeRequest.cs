@@ -10,7 +10,7 @@ namespace Islands.Generation
         [Range(30,100)]
         public float TargetArea = 30f;
 
-        [MinValue(0.1f)]
+        [Range(0.1f, 20f)]
         public float TargetMaxElevation = 2.4f;
 
         [Range(50f, 200f)]

@@ -6,7 +6,7 @@ namespace Islands.Generation
     [CreateAssetMenu(menuName = "Islands/Island Water Preset", fileName = "IslandWaterPreset")]
     public class IslandWaterPreset : SerializedScriptableObject
     {
-        [SerializeField, BoxGroup("Sources"), Range(0, 8)]
+        [SerializeField, BoxGroup("Sources"), Range(0, 20)]
         private int flowSources = 2;
 
         [SerializeField, BoxGroup("Branches"), Range(0f, 0.35f)]
@@ -15,13 +15,13 @@ namespace Islands.Generation
         [SerializeField, BoxGroup("Detail"), Range(6, 64)]
         private int riverPointCount = 18;
 
-        [SerializeField, BoxGroup("Meanders"), MinValue(0.1f)]
+        [SerializeField, BoxGroup("Meanders"), Range(0.1f, 100f)]
         private float meanderLength = 4f;
 
-        [SerializeField, BoxGroup("Meanders"), MinValue(0f)]
+        [SerializeField, BoxGroup("Meanders"), Range(0f, 100f)]
         private float meanderWidth = 2f;
 
-        public int FlowSources => Mathf.Clamp(flowSources, 0, 8);
+        public int FlowSources => flowSources;
         public float BranchProbability => Mathf.Clamp(branchProbability, 0f, 0.35f);
         public int RiverPointCount => Mathf.Clamp(riverPointCount, 6, 64);
         public float MeanderLength => Mathf.Max(0.1f, meanderLength);

@@ -16,7 +16,7 @@ namespace Islands.Generation
         [SerializeField]
         private Color sourceColor = new Color(0.25f, 0.95f, 1.00f, 1f);
 
-        [SerializeField, MinValue(0.01f)]
+        [SerializeField, Range(0.01f, 5f)]
         private float sourceMarkerRadius = 0.2f;
 
         private Vector4[][] cachedRivers;

@@ -156,7 +156,9 @@ namespace Islands.Generation
             while (progress < totalLength && points.Count - 1 < maxInteriorPoints)
             {
                 var pointOnAxis = source + direction * progress;
-                var meanderPoint = pointOnAxis + normal * (halfWidth * side);
+                var progress01 = Mathf.Clamp01(progress / totalLength);
+                var widthScale = Mathf.Lerp(0.35f, 1f, progress01);
+                var meanderPoint = pointOnAxis + normal * (halfWidth * widthScale * side);
                 points.Add(meanderPoint);
                 progress += halfLength;
                 side *= -1f;

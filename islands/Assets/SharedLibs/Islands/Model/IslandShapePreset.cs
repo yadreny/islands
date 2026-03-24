@@ -6,16 +6,16 @@ namespace Islands.Generation
     [CreateAssetMenu(menuName = "Islands/Island Shape Preset", fileName = "IslandShapePreset")]
     public class IslandShapePreset : SerializedScriptableObject
     {
-        [SerializeField, BoxGroup("Reference"), MinValue(1f)]
+        [SerializeField, BoxGroup("Reference"), Range(1f, 10000f)]
         private float recommendedArea = 300f;
 
-        [SerializeField, BoxGroup("Reference"), MinValue(0.1f)]
+        [SerializeField, BoxGroup("Reference"), Range(0.1f, 10000f)]
         private float recommendedMaxElevation = 900f;
 
-        [SerializeField, BoxGroup("Reference"), MinValue(1f)]
+        [SerializeField, BoxGroup("Reference"), Range(1f, 10f)]
         private float recommendedAspectRatio = 1.25f;
 
-        [SerializeField, BoxGroup("Reference"), MinValue(0.01f)]
+        [SerializeField, BoxGroup("Reference"), Range(0.01f, 5f)]
         private float recommendedReliefComplexity = 0.45f;
 
         [SerializeField, BoxGroup("Reference"), Range(64, 1024)]
@@ -30,10 +30,10 @@ namespace Islands.Generation
         [SerializeField, BoxGroup("Mass")]
         private IslandReliefProfile reliefProfile = IslandReliefProfile.BrokenMassif;
 
-        [SerializeField, BoxGroup("Macro"), MinValue(0)]
+        [SerializeField, BoxGroup("Macro"), Range(0, 20)]
         private int lobeCount = 2;
 
-        [SerializeField, BoxGroup("Macro"), MinValue(0)]
+        [SerializeField, BoxGroup("Macro"), Range(0, 20)]
         private int bayCount = 2;
 
         [SerializeField, BoxGroup("Macro"), Range(0f, 0.5f)]
@@ -54,7 +54,7 @@ namespace Islands.Generation
         [SerializeField, BoxGroup("Coast"), Range(0f, 1f)]
         private float arcCurvature;
 
-        [SerializeField, BoxGroup("Coast"), MinValue(0)]
+        [SerializeField, BoxGroup("Coast"), Range(0, 20)]
         private int ringBreakCount;
 
         public float RecommendedArea => recommendedArea;
