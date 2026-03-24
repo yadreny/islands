@@ -21,11 +21,31 @@ namespace Islands.Generation
         [SerializeField, BoxGroup("Meanders"), Range(0f, 100f)]
         private float meanderWidth = 2f;
 
+        [SerializeField, BoxGroup("Confluence")]
+        private bool mergeRivers = true;
+
+        [SerializeField, BoxGroup("Confluence"), Range(0f, 1f)]
+        private float mergeSnapDistance = 0.5f;
+
+        [SerializeField, BoxGroup("Confluence")]
+        private bool mergeShortRivers = true;
+
+        [SerializeField, BoxGroup("Confluence"), Range(0f, 100f)]
+        private float shortRiverMinLength = 3f;
+
+        [SerializeField, BoxGroup("Confluence"), Range(0f, 10f)]
+        private float mergeShortDistance = 1f;
+
         public int FlowSources => flowSources;
         public float BranchProbability => branchProbability;
         public int RiverPointCount => riverPointCount;
         public float MeanderLength => meanderLength;
         public float MeanderWidth => meanderWidth;
+        public bool MergeRivers => mergeRivers;
+        public float MergeSnapDistance => mergeSnapDistance;
+        public bool MergeShortRivers => mergeShortRivers;
+        public float ShortRiverMinLength => shortRiverMinLength;
+        public float MergeShortDistance => mergeShortDistance;
 
         public int GetStableHashCode()
         {
@@ -37,6 +57,11 @@ namespace Islands.Generation
                 hash = hash * 31 + RiverPointCount;
                 hash = hash * 31 + MeanderLength.GetHashCode();
                 hash = hash * 31 + MeanderWidth.GetHashCode();
+                hash = hash * 31 + MergeRivers.GetHashCode();
+                hash = hash * 31 + MergeSnapDistance.GetHashCode();
+                hash = hash * 31 + MergeShortRivers.GetHashCode();
+                hash = hash * 31 + ShortRiverMinLength.GetHashCode();
+                hash = hash * 31 + MergeShortDistance.GetHashCode();
                 return hash;
             }
         }

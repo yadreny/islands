@@ -61,7 +61,16 @@ namespace Islands.Generation
                 acceptedMouths.Add(mouth.Value);
             }
 
-            ResolveRiverIntersections(acceptedRivers);
+            if (waterPreset.MergeRivers)
+            {
+                ResolveRiverIntersections(acceptedRivers);
+            }
+
+            if (waterPreset.MergeShortRivers)
+            {
+                ResolveShortRivers(acceptedRivers);
+            }
+
             return acceptedRivers.ToArray();
         }
 
@@ -195,25 +204,27 @@ namespace Islands.Generation
             {
                 changed = false;
                 guard++;
+                var order = BuildRiverOrderByLength(rivers, descending: true);
 
-                for (var i = 0; i < rivers.Count; i++)
+                for (var orderIndex = 0; orderIndex < order.Count; orderIndex++)
                 {
-                    for (var j = i + 1; j < rivers.Count; j++)
+                    var mainIndex = order[orderIndex];
+                    var mainRiver = rivers[mainIndex];
+                    if (mainRiver == null || mainRiver.Length < 2)
                     {
-                        var first = rivers[i];
-                        var second = rivers[j];
-                        if (first == null || second == null || first.Length < 2 || second.Length < 2)
+                        continue;
+                    }
+
+                    for (var otherOrderIndex = orderIndex + 1; otherOrderIndex < order.Count; otherOrderIndex++)
+                    {
+                        var secondaryIndex = order[otherOrderIndex];
+                        var secondaryRiver = rivers[secondaryIndex];
+                        if (secondaryRiver == null || secondaryRiver.Length < 2)
                         {
                             continue;
                         }
 
-                        var firstLength = ComputeSourceToMouthLength(first);
-                        var secondLength = ComputeSourceToMouthLength(second);
-                        var mainRiver = firstLength >= secondLength ? first : second;
-                        var secondaryRiver = firstLength >= secondLength ? second : first;
-                        var secondaryIndex = firstLength >= secondLength ? j : i;
-
-                        if (!TryFindConnectionFromMouth(mainRiver, secondaryRiver, 0.5f, out var intersection, out var secondarySegmentIndex, out var secondarySegmentT))
+                        if (!TryFindConnectionFromMouth(mainRiver, secondaryRiver, waterPreset.MergeSnapDistance, out var intersection, out var secondarySegmentIndex, out var secondarySegmentT))
                         {
                             continue;
                         }
@@ -229,6 +240,108 @@ namespace Islands.Generation
                     }
                 }
             }
+        }
+
+        private void ResolveShortRivers(List<Vector4[]> rivers)
+        {
+            if (rivers == null || rivers.Count == 0)
+            {
+                return;
+            }
+
+            var order = BuildRiverOrderByLength(rivers, descending: true);
+            for (var orderIndex = 0; orderIndex < order.Count; orderIndex++)
+            {
+                var shortIndex = order[orderIndex];
+                var shortRiver = rivers[shortIndex];
+                if (shortRiver == null || shortRiver.Length < 2)
+                {
+                    continue;
+                }
+
+                if (ComputeSourceToMouthLength(shortRiver) >= waterPreset.ShortRiverMinLength)
+                {
+                    continue;
+                }
+
+                if (TryFindClosestRiverConnection(shortIndex, rivers, waterPreset.MergeShortDistance, out var intersection, out var shortSegmentIndex, out var shortSegmentT))
+                {
+                    var trimmed = TrimRiverToBranch(shortRiver, intersection, shortSegmentIndex, shortSegmentT);
+                    rivers[shortIndex] = trimmed != null && trimmed.Length >= 2 ? trimmed : Array.Empty<Vector4>();
+                }
+                else
+                {
+                    rivers[shortIndex] = Array.Empty<Vector4>();
+                }
+            }
+        }
+
+        private List<int> BuildRiverOrderByLength(List<Vector4[]> rivers, bool descending)
+        {
+            var order = new List<int>(rivers.Count);
+            for (var i = 0; i < rivers.Count; i++)
+            {
+                order.Add(i);
+            }
+
+            order.Sort((left, right) =>
+            {
+                var leftLength = ComputeSourceToMouthLength(rivers[left]);
+                var rightLength = ComputeSourceToMouthLength(rivers[right]);
+                return descending
+                    ? rightLength.CompareTo(leftLength)
+                    : leftLength.CompareTo(rightLength);
+            });
+            return order;
+        }
+
+        private bool TryFindClosestRiverConnection(int sourceRiverIndex, List<Vector4[]> rivers, float maxDistance, out Vector2 intersection, out int sourceSegmentIndex, out float sourceSegmentT)
+        {
+            intersection = Vector2.zero;
+            sourceSegmentIndex = -1;
+            sourceSegmentT = 0f;
+            var sourceRiver = rivers[sourceRiverIndex];
+            var bestDistance = float.MaxValue;
+            var found = false;
+
+            for (var otherIndex = 0; otherIndex < rivers.Count; otherIndex++)
+            {
+                if (otherIndex == sourceRiverIndex)
+                {
+                    continue;
+                }
+
+                var otherRiver = rivers[otherIndex];
+                if (otherRiver == null || otherRiver.Length < 2)
+                {
+                    continue;
+                }
+
+                for (var sourceIndex = 0; sourceIndex < sourceRiver.Length - 1; sourceIndex++)
+                {
+                    var sourceA = ToPlanar(sourceRiver[sourceIndex]);
+                    var sourceB = ToPlanar(sourceRiver[sourceIndex + 1]);
+                    for (var otherSegmentIndex = 0; otherSegmentIndex < otherRiver.Length - 1; otherSegmentIndex++)
+                    {
+                        var otherA = ToPlanar(otherRiver[otherSegmentIndex]);
+                        var otherB = ToPlanar(otherRiver[otherSegmentIndex + 1]);
+                        ClosestPointsBetweenSegments(otherA, otherB, sourceA, sourceB, out var pointOnOther, out var pointOnSource, out _, out var tOnSource);
+                        var distance = Vector2.Distance(pointOnOther, pointOnSource);
+                        if (distance > maxDistance || distance >= bestDistance)
+                        {
+                            continue;
+                        }
+
+                        bestDistance = distance;
+                        intersection = pointOnOther;
+                        sourceSegmentIndex = sourceIndex;
+                        sourceSegmentT = tOnSource;
+                        found = true;
+                    }
+                }
+            }
+
+            return found;
         }
 
         private float ComputeSourceToMouthLength(Vector4[] river)
@@ -261,7 +374,7 @@ namespace Islands.Generation
 
                     if (TryIntersectSegments(mainA, mainB, secondaryA, secondaryB, out var intersectionPoint, out _, out var tSecondary))
                     {
-                        var candidate = new ConnectionCandidate(intersectionPoint, secondaryIndex, tSecondary, 0f, true);
+                        var candidate = new ConnectionCandidate(intersectionPoint, secondaryIndex, tSecondary, 0f);
                         if (!foundCandidate || candidate.Distance < bestCandidate.Distance)
                         {
                             bestCandidate = candidate;
@@ -276,7 +389,7 @@ namespace Islands.Generation
                         continue;
                     }
 
-                    var nearCandidate = new ConnectionCandidate(nearPoint, secondaryIndex, nearTSecondary, nearDistance, false);
+                    var nearCandidate = new ConnectionCandidate(nearPoint, secondaryIndex, nearTSecondary, nearDistance);
                     if (!foundCandidate || nearCandidate.Distance < bestCandidate.Distance)
                     {
                         bestCandidate = nearCandidate;
@@ -590,20 +703,18 @@ namespace Islands.Generation
 
         private readonly struct ConnectionCandidate
         {
-            public ConnectionCandidate(Vector2 intersection, int secondarySegmentIndex, float secondarySegmentT, float distance, bool isExactIntersection)
+            public ConnectionCandidate(Vector2 intersection, int secondarySegmentIndex, float secondarySegmentT, float distance)
             {
                 Intersection = intersection;
                 SecondarySegmentIndex = secondarySegmentIndex;
                 SecondarySegmentT = secondarySegmentT;
                 Distance = distance;
-                IsExactIntersection = isExactIntersection;
             }
 
             public Vector2 Intersection { get; }
             public int SecondarySegmentIndex { get; }
             public float SecondarySegmentT { get; }
             public float Distance { get; }
-            public bool IsExactIntersection { get; }
         }
     }
 }
