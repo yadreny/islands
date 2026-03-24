@@ -7,9 +7,6 @@ namespace Islands.Generation
     [Serializable]
     public class IslandShapeRequest
     {
-        [Required, AssetsOnly]
-        public IslandShapePreset Preset;
-
         [Range(30,100)]
         public float TargetArea = 30f;
 
@@ -33,14 +30,11 @@ namespace Islands.Generation
 
         public int Seed = 12345;
 
- 
-
         public int GetStableHashCode()
         {
             unchecked
             {
                 var hash = 17;
-                hash = hash * 31 + (Preset != null ? Preset.GetStableHashCode() : 0);
                 hash = hash * 31 + TargetArea.GetHashCode();
                 hash = hash * 31 + TargetMaxElevation.GetHashCode();
                 hash = hash * 31 + AspectPercent.GetHashCode();

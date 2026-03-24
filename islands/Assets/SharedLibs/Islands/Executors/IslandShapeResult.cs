@@ -6,10 +6,10 @@ namespace Islands.Generation
 {
     public sealed class IslandContourGenerationContext
     {
-        public IslandContourGenerationContext(IslandShapeRequest request, int segmentCount)
+        public IslandContourGenerationContext(IslandShapePreset preset, IslandShapeRequest request, int segmentCount)
         {
             Request = request ?? throw new ArgumentNullException(nameof(request));
-            Preset = request.Preset != null ? request.Preset : throw new InvalidOperationException("IslandShapeRequest requires a preset asset.");
+            Preset = preset ?? throw new InvalidOperationException("Island contour generation requires a preset asset.");
             SegmentCount = Mathf.Clamp(segmentCount, 64, 1024);
             Seed = request.Seed;
             Random = new System.Random(Seed);

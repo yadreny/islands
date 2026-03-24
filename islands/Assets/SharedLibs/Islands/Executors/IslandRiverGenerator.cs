@@ -6,6 +6,7 @@ namespace Islands.Generation
 {
     public class IslandRiverGenerator
     {
+        private readonly IslandShapePreset shapePreset;
         private readonly IslandShapeRequest request;
         private readonly Vector2[][] contours;
         private readonly IslandWaterPreset waterPreset;
@@ -13,8 +14,9 @@ namespace Islands.Generation
         private readonly IslandContourMath contourMath;
         private readonly System.Random random;
 
-        public IslandRiverGenerator(IslandShapeRequest request, Vector2[][] contours, IslandWaterPreset waterPreset, int riverPointCount = 18)
+        public IslandRiverGenerator(IslandShapePreset shapePreset, IslandShapeRequest request, Vector2[][] contours, IslandWaterPreset waterPreset)
         {
+            this.shapePreset = shapePreset ?? throw new ArgumentNullException(nameof(shapePreset));
             this.request = request ?? throw new ArgumentNullException(nameof(request));
             this.contours = contours;
             this.waterPreset = waterPreset ?? throw new ArgumentNullException(nameof(waterPreset));
@@ -25,11 +27,6 @@ namespace Islands.Generation
 
         public Vector4[][] Execute()
         {
-            if (request.Preset == null)
-            {
-                return Array.Empty<Vector4[]>();
-            }
-
             if (contours == null || contours.Length == 0 || contours[0] == null || contours[0].Length < 4)
             {
                 return Array.Empty<Vector4[]>();
@@ -55,7 +52,7 @@ namespace Islands.Generation
             {
                 for (var attempt = 0; attempt < maxAttemptsPerRiver; attempt++)
                 {
-                    var jitterScale = waterPreset.MouthJitter + attempt * 0.03f;
+                    var jitterScale = waterPreset.MouthJitter + attempt * 0.02f;
                     var jitter = Mathf.Lerp(-jitterScale, jitterScale, contourMath.NextFloat(random)) * indexStep;
                     var mouthIndex = Mathf.RoundToInt((baseOffset + i * indexStep + jitter) % coastline.Length);
                     if (mouthIndex < 0)
@@ -63,21 +60,23 @@ namespace Islands.Generation
                         mouthIndex += coastline.Length;
                     }
 
-                    var candidate = BuildRiver(coastline, mouthIndex, centroid, islandScale);
-                    if (candidate == null || candidate.Length <= 1)
-                    {
-                        continue;
-                    }
-
-                    var mouth = GetRiverPoint(candidate[candidate.Length - 1]);
+                    var mouth = coastline[mouthIndex];
                     if (IsTooCloseToExistingMouths(mouth, acceptedMouths, islandScale * waterPreset.MouthSpacing))
                     {
                         continue;
                     }
 
-                    if (TryFindBranchJoin(candidate, acceptedRivers, out var join))
+                    Vector4[] candidate = null;
+                    var allowBranch = acceptedRivers.Count > 0 && contourMath.NextFloat(random) < waterPreset.BranchChance;
+                    if (allowBranch)
                     {
-                        candidate = BuildBranchRiver(join, candidate);
+                        candidate = BuildBranchRiver(acceptedRivers, coastline, mouthIndex, centroid, islandScale);
+                    }
+
+                    candidate ??= BuildTrunkRiver(coastline, mouthIndex, centroid, islandScale);
+                    if (candidate == null || candidate.Length <= 1)
+                    {
+                        continue;
                     }
 
                     acceptedRivers.Add(candidate);
@@ -89,165 +88,214 @@ namespace Islands.Generation
             return acceptedRivers.ToArray();
         }
 
-        private Vector4[] BuildRiver(Vector2[] coastline, int mouthIndex, Vector2 centroid, float islandScale)
+        private Vector4[] BuildTrunkRiver(Vector2[] coastline, int mouthIndex, Vector2 centroid, float islandScale)
         {
             var mouth = coastline[mouthIndex];
             var inward = ComputeInwardNormal(coastline, mouthIndex);
             var tangent = ComputeTangent(coastline, mouthIndex);
             var reliefFactor = Mathf.Lerp(0.95f, 1.30f, ResolveRelief01());
-
-            var uplandDistance = islandScale * Mathf.Lerp(Mathf.Max(0.20f, waterPreset.InlandReach - 0.14f), waterPreset.InlandReach + 0.10f, contourMath.NextFloat(random)) * reliefFactor;
-            var lateralOffset = islandScale * Mathf.Lerp(-waterPreset.MeanderStrength, waterPreset.MeanderStrength, contourMath.NextFloat(random));
-            var innerAnchor = mouth + inward * uplandDistance;
-            var sourceCandidate = Vector2.Lerp(centroid, innerAnchor, 0.60f) + tangent * lateralOffset;
+            var inlandDistance = islandScale * Mathf.Lerp(Mathf.Max(0.24f, waterPreset.InlandReach - 0.08f), waterPreset.InlandReach + 0.12f, contourMath.NextFloat(random)) * reliefFactor;
+            var lateralOffset = islandScale * Mathf.Lerp(-waterPreset.MeanderStrength, waterPreset.MeanderStrength, contourMath.NextFloat(random)) * 0.55f;
+            var sourceAnchor = mouth + inward * inlandDistance + tangent * lateralOffset;
+            var sourceCandidate = Vector2.Lerp(centroid, sourceAnchor, 0.58f);
             var source = PullInsidePolygon(coastline, centroid, sourceCandidate, 12);
 
             var minimumLength = islandScale * waterPreset.MinimumRiverLength;
-            var currentLength = Vector2.Distance(source, mouth);
-            if (currentLength < minimumLength)
+            if (Vector2.Distance(source, mouth) < minimumLength)
             {
                 var fallback = mouth + inward * minimumLength + tangent * lateralOffset * 0.5f;
                 source = PullInsidePolygon(coastline, centroid, fallback, 12);
-                currentLength = Vector2.Distance(source, mouth);
             }
 
-            if (currentLength < islandScale * 0.16f)
+            if (Vector2.Distance(source, mouth) < islandScale * 0.16f)
             {
                 return null;
             }
 
+            var distance = Vector2.Distance(source, mouth);
+            var mouthTangent = tangent;
             var flowDirection = (mouth - source).sqrMagnitude > 0.0001f ? (mouth - source).normalized : -inward;
             var bendSign = contourMath.NextFloat(random) < 0.5f ? -1f : 1f;
-            var bendMagnitude = islandScale * Mathf.Lerp(waterPreset.MeanderStrength * 0.35f, waterPreset.MeanderStrength, contourMath.NextFloat(random));
-            var controlA = Vector2.Lerp(source, mouth, 0.30f) + tangent * bendMagnitude * bendSign + flowDirection * islandScale * 0.015f;
-            var controlB = Vector2.Lerp(source, mouth, 0.72f) + tangent * bendMagnitude * bendSign * 0.50f;
+            var bendMagnitude = distance * Mathf.Lerp(waterPreset.MeanderStrength * 0.20f, waterPreset.MeanderStrength * 0.55f, contourMath.NextFloat(random));
+            var controlA = source + flowDirection * distance * 0.28f + new Vector2(-flowDirection.y, flowDirection.x) * bendMagnitude * bendSign;
+            var controlB = mouth - inward * distance * 0.18f + mouthTangent * bendMagnitude * bendSign * 0.35f;
 
-            var points = new Vector2[riverPointCount];
-            for (var i = 0; i < riverPointCount; i++)
+            var points = BuildBezierPoints(source, controlA, controlB, mouth, coastline, centroid, waterPreset.RiverPointCount);
+            if (points == null)
             {
-                var t = riverPointCount == 1 ? 1f : i / (float)(riverPointCount - 1);
-                var point = EvaluateCubicBezier(source, controlA, controlB, mouth, t);
-                if (i < riverPointCount - 1)
-                {
-                    point = PullInsidePolygon(coastline, centroid, point, 2);
-                }
-                else
-                {
-                    point = mouth;
-                }
-
-                points[i] = point;
+                return null;
             }
 
-            SmoothRiverPoints(points, coastline, centroid, 4, waterPreset.SmoothingStrength);
+            SmoothRiverPoints(points, coastline, centroid, 5, waterPreset.SmoothingStrength);
             points[0] = PullInsidePolygon(coastline, centroid, points[0], 3);
             points[points.Length - 1] = mouth;
 
-            var mouthWidth = islandScale * Mathf.Lerp(0.010f, 0.026f, waterPreset.RiverAbundance) * Mathf.Lerp(0.9f, 1.2f, contourMath.NextFloat(random));
-            var sourceWidth = mouthWidth * Mathf.Lerp(0.18f, 0.30f, contourMath.NextFloat(random));
-            var river = new Vector4[riverPointCount];
-            for (var i = 0; i < riverPointCount; i++)
-            {
-                var t = riverPointCount == 1 ? 1f : i / (float)(riverPointCount - 1);
-                var width = Mathf.Lerp(sourceWidth, mouthWidth, Mathf.Pow(t, 1.10f));
-                river[i] = new Vector4(points[i].x, 0f, points[i].y, width);
-            }
-
-            return river;
+            var mouthWidth = islandScale * Mathf.Lerp(0.010f, 0.026f, waterPreset.RiverAbundance) * Mathf.Lerp(0.9f, 1.15f, contourMath.NextFloat(random));
+            var sourceWidth = mouthWidth * Mathf.Lerp(0.16f, 0.24f, contourMath.NextFloat(random));
+            return BuildWidthProfile(points, sourceWidth, mouthWidth, 1.08f);
         }
 
-        private Vector4[] BuildBranchRiver(RiverJoinInfo join, Vector4[] candidate)
+        private Vector4[] BuildBranchRiver(List<Vector4[]> acceptedRivers, Vector2[] coastline, int mouthIndex, Vector2 centroid, float islandScale)
         {
-            var merged = new List<Vector4>(join.ExistingRiver.Length + candidate.Length);
-
-            for (var i = 0; i < join.ExistingSegmentIndex; i++)
+            var parentRiver = SelectBranchParent(acceptedRivers, coastline[mouthIndex]);
+            if (parentRiver == null || parentRiver.Length < 4)
             {
-                merged.Add(join.ExistingRiver[i]);
+                return null;
             }
 
-            var existingWidth = Mathf.Lerp(join.ExistingRiver[join.ExistingSegmentIndex].w, join.ExistingRiver[join.ExistingSegmentIndex + 1].w, join.ExistingSegmentT);
-            var candidateWidth = Mathf.Lerp(candidate[join.CandidateSegmentIndex].w, candidate[join.CandidateSegmentIndex + 1].w, join.CandidateSegmentT);
-            var joinWidth = Mathf.Max(existingWidth, candidateWidth);
-            var joinPoint = new Vector4(join.Point.x, 0f, join.Point.y, joinWidth);
-
-            if (merged.Count == 0 || Vector2.Distance(GetRiverPoint(merged[merged.Count - 1]), join.Point) > 0.0001f)
+            var branchProgress = Mathf.Lerp(waterPreset.BranchingStart, 0.86f, contourMath.NextFloat(random));
+            var branchSample = SampleRiver(parentRiver, branchProgress);
+            var branchPoint = branchSample.Point;
+            var downstreamTangent = branchSample.Tangent.sqrMagnitude > 0.0001f ? branchSample.Tangent.normalized : Vector2.down;
+            var branchWidth = branchSample.Width;
+            var mouth = coastline[mouthIndex];
+            var mouthTangent = ComputeTangent(coastline, mouthIndex);
+            var inward = ComputeInwardNormal(coastline, mouthIndex);
+            var toMouth = mouth - branchPoint;
+            var distance = toMouth.magnitude;
+            if (distance < islandScale * 0.12f)
             {
-                merged.Add(joinPoint);
+                return null;
             }
 
-            for (var i = join.CandidateSegmentIndex + 1; i < candidate.Length; i++)
+            var bendNormal = new Vector2(-downstreamTangent.y, downstreamTangent.x);
+            var branchSign = Mathf.Sign(Vector2.Dot(bendNormal, toMouth));
+            if (Mathf.Abs(branchSign) < 0.5f)
             {
-                merged.Add(candidate[i]);
+                branchSign = contourMath.NextFloat(random) < 0.5f ? -1f : 1f;
+            }
+
+            var bendMagnitude = distance * Mathf.Lerp(waterPreset.MeanderStrength * 0.12f, waterPreset.MeanderStrength * 0.40f, contourMath.NextFloat(random));
+            var controlA = branchPoint + downstreamTangent * distance * 0.24f + bendNormal * bendMagnitude * branchSign;
+            var controlB = mouth - inward * distance * 0.16f + mouthTangent * bendMagnitude * branchSign * 0.30f;
+            var tailPointCount = Mathf.Max(6, waterPreset.RiverPointCount / 2 + 2);
+            var tailPoints = BuildBezierPoints(branchPoint, controlA, controlB, mouth, coastline, centroid, tailPointCount);
+            if (tailPoints == null)
+            {
+                return null;
+            }
+
+            SmoothRiverPoints(tailPoints, coastline, centroid, 4, waterPreset.SmoothingStrength);
+            tailPoints[0] = branchPoint;
+            tailPoints[tailPoints.Length - 1] = mouth;
+
+            var prefix = ExtractPrefix(parentRiver, branchProgress, branchPoint, branchWidth);
+            if (prefix.Count == 0)
+            {
+                return null;
+            }
+
+            var tailStartWidth = branchWidth * Mathf.Lerp(0.92f, 0.98f, contourMath.NextFloat(random));
+            var tailMouthWidth = branchWidth * Mathf.Lerp(0.72f, 0.90f, contourMath.NextFloat(random));
+            var tail = BuildWidthProfile(tailPoints, tailStartWidth, tailMouthWidth, 0.95f);
+
+            var merged = new List<Vector4>(prefix.Count + tail.Length);
+            merged.AddRange(prefix);
+            for (var i = 1; i < tail.Length; i++)
+            {
+                merged.Add(tail[i]);
             }
 
             return merged.ToArray();
         }
 
-        private bool TryFindBranchJoin(Vector4[] candidate, List<Vector4[]> acceptedRivers, out RiverJoinInfo join)
+        private Vector4[] SelectBranchParent(List<Vector4[]> rivers, Vector2 mouth)
         {
-            join = default;
-            var found = false;
-            var bestCandidateProgress = float.MinValue;
-
-            for (var riverIndex = 0; riverIndex < acceptedRivers.Count; riverIndex++)
+            Vector4[] bestRiver = null;
+            var bestDistance = float.MaxValue;
+            for (var i = 0; i < rivers.Count; i++)
             {
-                var existing = acceptedRivers[riverIndex];
-                for (var i = 0; i < candidate.Length - 1; i++)
+                var river = rivers[i];
+                var riverMouth = GetRiverPoint(river[river.Length - 1]);
+                var distance = Vector2.Distance(riverMouth, mouth);
+                if (distance < bestDistance)
                 {
-                    var a0 = GetRiverPoint(candidate[i]);
-                    var a1 = GetRiverPoint(candidate[i + 1]);
-                    for (var j = 0; j < existing.Length - 1; j++)
-                    {
-                        var b0 = GetRiverPoint(existing[j]);
-                        var b1 = GetRiverPoint(existing[j + 1]);
-                        if (!TryGetSegmentIntersection(a0, a1, b0, b1, out var point, out var ta, out var tb))
-                        {
-                            continue;
-                        }
-
-                        var candidateProgress = (i + ta) / Mathf.Max(1f, candidate.Length - 1f);
-                        if (!found || candidateProgress > bestCandidateProgress)
-                        {
-                            found = true;
-                            bestCandidateProgress = candidateProgress;
-                            join = new RiverJoinInfo(existing, j, tb, i, ta, point);
-                        }
-                    }
+                    bestDistance = distance;
+                    bestRiver = river;
                 }
             }
 
-            return found;
+            return bestRiver;
         }
 
-        private bool TryGetSegmentIntersection(Vector2 a0, Vector2 a1, Vector2 b0, Vector2 b1, out Vector2 point, out float ta, out float tb)
+        private RiverSample SampleRiver(Vector4[] river, float progress)
         {
-            point = default;
-            ta = 0f;
-            tb = 0f;
-
-            var r = a1 - a0;
-            var s = b1 - b0;
-            var denominator = Cross(r, s);
-            if (Mathf.Abs(denominator) <= 0.00001f)
-            {
-                return false;
-            }
-
-            var diff = b0 - a0;
-            ta = Cross(diff, s) / denominator;
-            tb = Cross(diff, r) / denominator;
-            if (ta < 0f || ta > 1f || tb < 0f || tb > 1f)
-            {
-                return false;
-            }
-
-            point = a0 + r * ta;
-            return true;
+            progress = Mathf.Clamp01(progress);
+            var scaled = progress * (river.Length - 1);
+            var index = Mathf.Clamp(Mathf.FloorToInt(scaled), 0, river.Length - 2);
+            var t = scaled - index;
+            var a = river[index];
+            var b = river[index + 1];
+            var pointA = GetRiverPoint(a);
+            var pointB = GetRiverPoint(b);
+            var point = Vector2.Lerp(pointA, pointB, t);
+            var tangent = pointB - pointA;
+            var width = Mathf.Lerp(a.w, b.w, t);
+            return new RiverSample(point, tangent, width);
         }
 
-        private float Cross(Vector2 a, Vector2 b)
+        private List<Vector4> ExtractPrefix(Vector4[] river, float progress, Vector2 branchPoint, float branchWidth)
         {
-            return a.x * b.y - a.y * b.x;
+            progress = Mathf.Clamp01(progress);
+            var scaled = progress * (river.Length - 1);
+            var index = Mathf.Clamp(Mathf.FloorToInt(scaled), 0, river.Length - 2);
+            var prefix = new List<Vector4>(index + 2);
+            for (var i = 0; i <= index; i++)
+            {
+                prefix.Add(river[i]);
+            }
+
+            var lastPoint = prefix.Count > 0 ? GetRiverPoint(prefix[prefix.Count - 1]) : Vector2.positiveInfinity;
+            if (!Approximately(lastPoint, branchPoint))
+            {
+                prefix.Add(new Vector4(branchPoint.x, 0f, branchPoint.y, branchWidth));
+            }
+            else
+            {
+                prefix[prefix.Count - 1] = new Vector4(branchPoint.x, 0f, branchPoint.y, branchWidth);
+            }
+
+            return prefix;
+        }
+
+        private Vector2[] BuildBezierPoints(Vector2 start, Vector2 controlA, Vector2 controlB, Vector2 end, Vector2[] coastline, Vector2 centroid, int pointCount)
+        {
+            if (pointCount < 2)
+            {
+                return null;
+            }
+
+            var points = new Vector2[pointCount];
+            for (var i = 0; i < pointCount; i++)
+            {
+                var t = pointCount == 1 ? 1f : i / (float)(pointCount - 1);
+                var point = EvaluateCubicBezier(start, controlA, controlB, end, t);
+                if (i > 0 && i < pointCount - 1)
+                {
+                    point = PullInsidePolygon(coastline, centroid, point, 3);
+                }
+                else if (i == pointCount - 1)
+                {
+                    point = end;
+                }
+
+                points[i] = point;
+            }
+
+            return points;
+        }
+
+        private Vector4[] BuildWidthProfile(Vector2[] points, float startWidth, float endWidth, float power)
+        {
+            var river = new Vector4[points.Length];
+            for (var i = 0; i < points.Length; i++)
+            {
+                var t = points.Length == 1 ? 1f : i / (float)(points.Length - 1);
+                var width = Mathf.Lerp(startWidth, endWidth, Mathf.Pow(t, power));
+                river[i] = new Vector4(points[i].x, 0f, points[i].y, width);
+            }
+
+            return river;
         }
 
         private void SmoothRiverPoints(Vector2[] points, Vector2[] coastline, Vector2 centroid, int passes, float strength)
@@ -293,7 +341,7 @@ namespace Islands.Generation
 
         private int ResolveRiverCount(Vector2[] coastline)
         {
-            var areaFactor = Mathf.Sqrt(Mathf.Max(1f, request.TargetArea) / Mathf.Max(1f, request.Preset.RecommendedArea));
+            var areaFactor = Mathf.Sqrt(Mathf.Max(1f, request.TargetArea) / Mathf.Max(1f, shapePreset.RecommendedArea));
             var sizeFactor = Mathf.Lerp(0.85f, 1.35f, Mathf.Clamp01(areaFactor));
             var reliefFactor = Mathf.Lerp(0.85f, 1.25f, ResolveRelief01());
             var baseCount = Mathf.Lerp(0f, 8f, waterPreset.RiverAbundance);
@@ -308,7 +356,7 @@ namespace Islands.Generation
 
         private float ResolveRelief01()
         {
-            var finalRelief = request.Preset.RecommendedReliefComplexity * request.ReliefComplexityPercent / 100f;
+            var finalRelief = shapePreset.RecommendedReliefComplexity * request.ReliefComplexityPercent / 100f;
             return Mathf.InverseLerp(0.05f, 1.5f, Mathf.Clamp(finalRelief, 0.05f, 1.5f));
         }
 
@@ -419,24 +467,23 @@ namespace Islands.Generation
                    t * t * t * d;
         }
 
-        private readonly struct RiverJoinInfo
+        private bool Approximately(Vector2 a, Vector2 b)
         {
-            public RiverJoinInfo(Vector4[] existingRiver, int existingSegmentIndex, float existingSegmentT, int candidateSegmentIndex, float candidateSegmentT, Vector2 point)
+            return Vector2.SqrMagnitude(a - b) <= 0.000001f;
+        }
+
+        private readonly struct RiverSample
+        {
+            public RiverSample(Vector2 point, Vector2 tangent, float width)
             {
-                ExistingRiver = existingRiver;
-                ExistingSegmentIndex = existingSegmentIndex;
-                ExistingSegmentT = existingSegmentT;
-                CandidateSegmentIndex = candidateSegmentIndex;
-                CandidateSegmentT = candidateSegmentT;
                 Point = point;
+                Tangent = tangent;
+                Width = width;
             }
 
-            public Vector4[] ExistingRiver { get; }
-            public int ExistingSegmentIndex { get; }
-            public float ExistingSegmentT { get; }
-            public int CandidateSegmentIndex { get; }
-            public float CandidateSegmentT { get; }
             public Vector2 Point { get; }
+            public Vector2 Tangent { get; }
+            public float Width { get; }
         }
     }
 }

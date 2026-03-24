@@ -18,6 +18,9 @@ namespace Islands.Generation
         [SerializeField, BoxGroup("Reference"), MinValue(0.01f)]
         private float recommendedReliefComplexity = 0.45f;
 
+        [SerializeField, BoxGroup("Reference"), Range(64, 1024)]
+        private int contourSegments = 256;
+
         [SerializeField, BoxGroup("Mass"), Range(0.2f, 1f)]
         private float footprintFill = 0.78f;
 
@@ -58,6 +61,7 @@ namespace Islands.Generation
         public float RecommendedMaxElevation => recommendedMaxElevation;
         public float RecommendedAspectRatio => recommendedAspectRatio;
         public float RecommendedReliefComplexity => recommendedReliefComplexity;
+        public int ContourSegments => Mathf.Clamp(contourSegments, 64, 1024);
         public float FootprintFill => footprintFill;
         public IslandMassLayoutType MassLayoutType => massLayoutType;
         public IslandReliefProfile ReliefProfile => reliefProfile;
@@ -80,6 +84,7 @@ namespace Islands.Generation
                 hash = hash * 31 + recommendedMaxElevation.GetHashCode();
                 hash = hash * 31 + recommendedAspectRatio.GetHashCode();
                 hash = hash * 31 + recommendedReliefComplexity.GetHashCode();
+                hash = hash * 31 + ContourSegments;
                 hash = hash * 31 + footprintFill.GetHashCode();
                 hash = hash * 31 + (int)massLayoutType;
                 hash = hash * 31 + (int)reliefProfile;

@@ -10,32 +10,37 @@ namespace Islands.Generation
         private IslandGenerationContext generationContext;
 
         [SerializeField]
-        private bool regenerateAutomatically = true;
-
-        [SerializeField]
-        private float gizmoHeight = 0f;
-
-        [SerializeField]
-        private bool drawWhenNotSelected;
-
-        [SerializeField]
-        private bool drawBounds = true;
-
-        [SerializeField]
         private Color coastlineColor = new Color(0.20f, 0.90f, 0.50f, 1f);
 
         [SerializeField]
         private Color secondaryContourColor = new Color(1.00f, 0.85f, 0.20f, 1f);
 
-        [SerializeField]
-        private Color boundsColor = new Color(1.00f, 0.40f, 0.20f, 1f);
-
-        private readonly IslandContourMath contourMath = new IslandContourMath();
         private Vector2[][] cachedContours;
-        private Rect cachedBounds;
         private int cachedHash;
 
-        public void Regenerate()
+        private void OnEnable()
+        {
+            AutoBindContext();
+            Regenerate();
+        }
+
+        private void OnValidate()
+        {
+            AutoBindContext();
+            Regenerate();
+        }
+
+        private void OnDrawGizmos()
+        {
+            DrawPreview();
+        }
+
+        private void OnDrawGizmosSelected()
+        {
+            DrawPreview();
+        }
+
+        private void Regenerate()
         {
             if (!TryResolveContours(out var contours))
             {
@@ -45,39 +50,7 @@ namespace Islands.Generation
             }
 
             cachedContours = contours;
-            cachedBounds = cachedContours.Length > 0 ? contourMath.ComputeBounds(cachedContours) : default;
             cachedHash = ComputeHash();
-        }
-
-        private void OnEnable()
-        {
-            AutoBindContext();
-            if (regenerateAutomatically)
-            {
-                Regenerate();
-            }
-        }
-
-        private void OnValidate()
-        {
-            AutoBindContext();
-            if (regenerateAutomatically)
-            {
-                Regenerate();
-            }
-        }
-
-        private void OnDrawGizmos()
-        {
-            if (drawWhenNotSelected)
-            {
-                DrawPreview();
-            }
-        }
-
-        private void OnDrawGizmosSelected()
-        {
-            DrawPreview();
         }
 
         private void DrawPreview()
@@ -91,11 +64,6 @@ namespace Islands.Generation
             for (var i = 0; i < cachedContours.Length; i++)
             {
                 DrawLoop(cachedContours[i], i == 0 ? coastlineColor : secondaryContourColor);
-            }
-
-            if (drawBounds)
-            {
-                DrawBounds(cachedBounds);
             }
         }
 
@@ -156,22 +124,9 @@ namespace Islands.Generation
             }
         }
 
-        private void DrawBounds(Rect rect)
-        {
-            Gizmos.color = boundsColor;
-            var a = ToWorld(new Vector2(rect.xMin, rect.yMin));
-            var b = ToWorld(new Vector2(rect.xMax, rect.yMin));
-            var c = ToWorld(new Vector2(rect.xMax, rect.yMax));
-            var d = ToWorld(new Vector2(rect.xMin, rect.yMax));
-            Gizmos.DrawLine(a, b);
-            Gizmos.DrawLine(b, c);
-            Gizmos.DrawLine(c, d);
-            Gizmos.DrawLine(d, a);
-        }
-
         private Vector3 ToWorld(Vector2 point)
         {
-            return transform.TransformPoint(new Vector3(point.x, gizmoHeight, point.y));
+            return transform.TransformPoint(new Vector3(point.x, 0f, point.y));
         }
     }
 }

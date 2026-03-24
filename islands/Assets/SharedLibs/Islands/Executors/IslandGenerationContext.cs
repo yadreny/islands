@@ -5,26 +5,33 @@ namespace Islands.Generation
 {
     public class IslandGenerationContext : SerializedMonoBehaviour
     {
-        [SerializeField, Required, AssetsOnly]
+        [SerializeField, Required, InlineEditor]
+        private IslandShapePreset shapePreset;
+
+        [SerializeField, Required, InlineEditor]
         private IslandWaterPreset waterPreset;
 
         [SerializeField, InlineProperty, HideLabel]
         private IslandShapeRequest request = new IslandShapeRequest();
 
-        [SerializeField, Range(64, 1024)]
-        private int contourSegments = 256;
-
         private Vector2[][] cachedContours;
         private int cachedHash;
 
+        public IslandShapePreset ShapePreset => shapePreset;
         public IslandShapeRequest Request => request;
         public IslandWaterPreset WaterPreset => waterPreset;
-        public int ContourSegments => contourSegments;
+        public int ContourSegments => shapePreset != null ? shapePreset.ContourSegments : 256;
+
+        public bool TryGetShapePreset(out IslandShapePreset resolvedShapePreset)
+        {
+            resolvedShapePreset = shapePreset;
+            return resolvedShapePreset != null;
+        }
 
         public bool TryGetRequest(out IslandShapeRequest resolvedRequest)
         {
             resolvedRequest = request;
-            return resolvedRequest != null && resolvedRequest.Preset != null;
+            return resolvedRequest != null;
         }
 
         public bool TryGetWaterPreset(out IslandWaterPreset resolvedWaterPreset)
@@ -36,12 +43,12 @@ namespace Islands.Generation
         public bool TryGetContours(out Vector2[][] contours)
         {
             contours = null;
-            if (!TryGetRequest(out var resolvedRequest))
+            if (!TryGetShapePreset(out var resolvedShapePreset) || !TryGetRequest(out var resolvedRequest))
             {
                 return false;
             }
 
-            EnsureContoursUpToDate(resolvedRequest);
+            EnsureContoursUpToDate(resolvedShapePreset, resolvedRequest);
             contours = cachedContours;
             return contours != null && contours.Length > 0;
         }
@@ -50,9 +57,9 @@ namespace Islands.Generation
         {
             unchecked
             {
-                var hash = request != null ? request.GetStableHashCode() : 17;
+                var hash = shapePreset != null ? shapePreset.GetStableHashCode() : 17;
+                hash = hash * 31 + (request != null ? request.GetStableHashCode() : 0);
                 hash = hash * 31 + (waterPreset != null ? waterPreset.GetStableHashCode() : 0);
-                hash = hash * 31 + contourSegments;
                 return hash;
             }
         }
@@ -62,7 +69,7 @@ namespace Islands.Generation
             InvalidateCache();
         }
 
-        private void EnsureContoursUpToDate(IslandShapeRequest resolvedRequest)
+        private void EnsureContoursUpToDate(IslandShapePreset resolvedShapePreset, IslandShapeRequest resolvedRequest)
         {
             var hash = GetStableHashCode();
             if (cachedContours != null && cachedHash == hash)
@@ -70,7 +77,7 @@ namespace Islands.Generation
                 return;
             }
 
-            cachedContours = new IslandContourGenerator(resolvedRequest, contourSegments).Execute();
+            cachedContours = new IslandContourGenerator(resolvedShapePreset, resolvedRequest, resolvedShapePreset.ContourSegments).Execute();
             cachedHash = hash;
         }
 

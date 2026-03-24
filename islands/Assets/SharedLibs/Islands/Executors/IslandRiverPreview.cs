@@ -9,66 +9,45 @@ namespace Islands.Generation
         [SerializeField, Required]
         private IslandGenerationContext generationContext;
 
-        [SerializeField, Range(6, 64)]
-        private int riverPointCount = 18;
-
-        [SerializeField]
-        private bool regenerateAutomatically = true;
-
-        [SerializeField]
-        private bool drawWhenNotSelected;
-
-        [SerializeField]
-        private float gizmoHeight = 0f;
-
         [SerializeField]
         private Color riverColor = new Color(0.18f, 0.60f, 1.00f, 1f);
 
         private Vector4[][] cachedRivers;
         private int cachedHash;
 
-        public void Regenerate()
+        private void OnEnable()
         {
-            if (!TryResolveInputs(out var request, out var waterPreset, out var contours))
+            AutoBindContext();
+            Regenerate();
+        }
+
+        private void OnValidate()
+        {
+            AutoBindContext();
+            Regenerate();
+        }
+
+        private void OnDrawGizmos()
+        {
+            DrawPreview();
+        }
+
+        private void OnDrawGizmosSelected()
+        {
+            DrawPreview();
+        }
+
+        private void Regenerate()
+        {
+            if (!TryResolveInputs(out var shapePreset, out var request, out var waterPreset, out var contours))
             {
                 cachedRivers = null;
                 cachedHash = 0;
                 return;
             }
 
-            cachedRivers = new IslandRiverGenerator(request, contours, waterPreset, riverPointCount).Execute();
+            cachedRivers = new IslandRiverGenerator(shapePreset, request, contours, waterPreset).Execute();
             cachedHash = ComputeHash();
-        }
-
-        private void OnEnable()
-        {
-            AutoBindContext();
-            if (regenerateAutomatically)
-            {
-                Regenerate();
-            }
-        }
-
-        private void OnValidate()
-        {
-            AutoBindContext();
-            if (regenerateAutomatically)
-            {
-                Regenerate();
-            }
-        }
-
-        private void OnDrawGizmos()
-        {
-            if (drawWhenNotSelected)
-            {
-                DrawPreview();
-            }
-        }
-
-        private void OnDrawGizmosSelected()
-        {
-            DrawPreview();
         }
 
         private void DrawPreview()
@@ -96,17 +75,13 @@ namespace Islands.Generation
 
         private int ComputeHash()
         {
-            unchecked
-            {
-                var hash = generationContext != null ? generationContext.GetStableHashCode() : 17;
-                hash = hash * 31 + riverPointCount;
-                return hash;
-            }
+            return generationContext != null ? generationContext.GetStableHashCode() : 17;
         }
 
-        private bool TryResolveInputs(out IslandShapeRequest request, out IslandWaterPreset waterPreset, out Vector2[][] contours)
+        private bool TryResolveInputs(out IslandShapePreset shapePreset, out IslandShapeRequest request, out IslandWaterPreset waterPreset, out Vector2[][] contours)
         {
             AutoBindContext();
+            shapePreset = null;
             request = null;
             waterPreset = null;
             contours = null;
@@ -116,9 +91,9 @@ namespace Islands.Generation
                 return false;
             }
 
-            if (!generationContext.TryGetRequest(out request) || !generationContext.TryGetWaterPreset(out waterPreset) || !generationContext.TryGetContours(out contours))
+            if (!generationContext.TryGetShapePreset(out shapePreset) || !generationContext.TryGetRequest(out request) || !generationContext.TryGetWaterPreset(out waterPreset) || !generationContext.TryGetContours(out contours))
             {
-                Debug.LogWarning("Island river preview requires a valid contour and water preset from IslandGenerationContext.", this);
+                Debug.LogWarning("Island river preview requires a valid shape preset, contour and water preset from IslandGenerationContext.", this);
                 return false;
             }
 
@@ -149,7 +124,7 @@ namespace Islands.Generation
 
         private Vector3 ToWorld(Vector4 point)
         {
-            return transform.TransformPoint(new Vector3(point.x, gizmoHeight + point.y, point.z));
+            return transform.TransformPoint(new Vector3(point.x, point.y, point.z));
         }
     }
 }

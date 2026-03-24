@@ -7,9 +7,9 @@ namespace Islands.Generation
         private readonly IslandContourGenerationContext context;
         private readonly IslandContourMath contourMath;
 
-        public IslandContourGenerator(IslandShapeRequest request, int segmentCount = 256)
+        public IslandContourGenerator(IslandShapePreset preset, IslandShapeRequest request, int segmentCount = 256)
         {
-            context = new IslandContourGenerationContext(request, segmentCount);
+            context = new IslandContourGenerationContext(preset, request, segmentCount);
             contourMath = new IslandContourMath();
         }
 

@@ -24,7 +24,9 @@ MonoBehaviour:
   riverAbundance: 0.5
   inlandReach: 0.6
   minimumRiverLength: 0.24
-  meanderStrength: 0.035
-  smoothingStrength: 0.72
+  meanderStrength: 0.02
+  smoothingStrength: 0.82
   mouthJitter: 0.12
   mouthSpacing: 0.06
+  branchChance: 0.42
+  branchingStart: 0.6
