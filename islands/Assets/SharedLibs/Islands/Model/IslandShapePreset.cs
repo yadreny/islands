@@ -61,7 +61,7 @@ namespace Islands.Generation
         public float RecommendedMaxElevation => recommendedMaxElevation;
         public float RecommendedAspectRatio => recommendedAspectRatio;
         public float RecommendedReliefComplexity => recommendedReliefComplexity;
-        public int ContourSegments => Mathf.Clamp(contourSegments, 64, 1024);
+        public int ContourSegments => contourSegments;
         public float FootprintFill => footprintFill;
         public IslandMassLayoutType MassLayoutType => massLayoutType;
         public IslandReliefProfile ReliefProfile => reliefProfile;

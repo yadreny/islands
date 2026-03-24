@@ -61,6 +61,7 @@ namespace Islands.Generation
                 acceptedMouths.Add(mouth.Value);
             }
 
+            ResolveRiverIntersections(acceptedRivers);
             return acceptedRivers.ToArray();
         }
 
@@ -179,6 +180,155 @@ namespace Islands.Generation
             }
 
             return river;
+        }
+        private void ResolveRiverIntersections(List<Vector4[]> rivers)
+        {
+            if (rivers == null || rivers.Count < 2)
+            {
+                return;
+            }
+
+            var changed = true;
+            var guard = 0;
+            while (changed && guard < 8)
+            {
+                changed = false;
+                guard++;
+
+                for (var i = 0; i < rivers.Count; i++)
+                {
+                    for (var j = i + 1; j < rivers.Count; j++)
+                    {
+                        var first = rivers[i];
+                        var second = rivers[j];
+                        if (first == null || second == null || first.Length < 2 || second.Length < 2)
+                        {
+                            continue;
+                        }
+
+                        var firstLength = ComputeSourceToMouthLength(first);
+                        var secondLength = ComputeSourceToMouthLength(second);
+                        var mainRiver = firstLength >= secondLength ? first : second;
+                        var secondaryRiver = firstLength >= secondLength ? second : first;
+                        var secondaryIndex = firstLength >= secondLength ? j : i;
+
+                        if (!TryFindIntersectionFromMouth(mainRiver, secondaryRiver, out var intersection, out var secondarySegmentIndex, out var secondarySegmentT))
+                        {
+                            continue;
+                        }
+
+                        var trimmed = TrimRiverToBranch(secondaryRiver, intersection, secondarySegmentIndex, secondarySegmentT);
+                        if (trimmed == null || trimmed.Length < 2)
+                        {
+                            continue;
+                        }
+
+                        rivers[secondaryIndex] = trimmed;
+                        changed = true;
+                    }
+                }
+            }
+        }
+
+        private float ComputeSourceToMouthLength(Vector4[] river)
+        {
+            if (river == null || river.Length < 2)
+            {
+                return 0f;
+            }
+
+            return Vector2.Distance(ToPlanar(river[0]), ToPlanar(river[river.Length - 1]));
+        }
+
+        private bool TryFindIntersectionFromMouth(Vector4[] mainRiver, Vector4[] secondaryRiver, out Vector2 intersection, out int secondarySegmentIndex, out float secondarySegmentT)
+        {
+            intersection = Vector2.zero;
+            secondarySegmentIndex = -1;
+            secondarySegmentT = 0f;
+
+            for (var mainIndex = mainRiver.Length - 2; mainIndex >= 0; mainIndex--)
+            {
+                var mainA = ToPlanar(mainRiver[mainIndex]);
+                var mainB = ToPlanar(mainRiver[mainIndex + 1]);
+                for (var secondaryIndex = 0; secondaryIndex < secondaryRiver.Length - 1; secondaryIndex++)
+                {
+                    var secondaryA = ToPlanar(secondaryRiver[secondaryIndex]);
+                    var secondaryB = ToPlanar(secondaryRiver[secondaryIndex + 1]);
+                    if (!TryIntersectSegments(mainA, mainB, secondaryA, secondaryB, out var point, out _, out var tSecondary))
+                    {
+                        continue;
+                    }
+
+                    intersection = point;
+                    secondarySegmentIndex = secondaryIndex;
+                    secondarySegmentT = tSecondary;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private Vector4[] TrimRiverToBranch(Vector4[] river, Vector2 intersection, int segmentIndex, float segmentT)
+        {
+            if (river == null || river.Length < 2 || segmentIndex < 0 || segmentIndex >= river.Length - 1)
+            {
+                return river;
+            }
+
+            var width = Mathf.Lerp(river[segmentIndex].w, river[segmentIndex + 1].w, segmentT);
+            var trimmed = new List<Vector4>(river.Length - segmentIndex + 1)
+            {
+                new Vector4(intersection.x, 0f, intersection.y, width)
+            };
+
+            for (var i = segmentIndex + 1; i < river.Length; i++)
+            {
+                trimmed.Add(river[i]);
+            }
+
+            return trimmed.ToArray();
+        }
+
+        private bool TryIntersectSegments(Vector2 a1, Vector2 a2, Vector2 b1, Vector2 b2, out Vector2 intersection, out float tA, out float tB)
+        {
+            intersection = Vector2.zero;
+            tA = 0f;
+            tB = 0f;
+
+            var r = a2 - a1;
+            var s = b2 - b1;
+            var denominator = Cross(r, s);
+            if (Mathf.Abs(denominator) <= 0.000001f)
+            {
+                return false;
+            }
+
+            var delta = b1 - a1;
+            tA = Cross(delta, s) / denominator;
+            tB = Cross(delta, r) / denominator;
+            if (tA < 0f || tA > 1f || tB < 0f || tB > 1f)
+            {
+                return false;
+            }
+
+            if ((tA <= 0.0001f || tA >= 0.9999f) && (tB <= 0.0001f || tB >= 0.9999f))
+            {
+                return false;
+            }
+
+            intersection = a1 + r * tA;
+            return true;
+        }
+
+        private float Cross(Vector2 a, Vector2 b)
+        {
+            return a.x * b.y - a.y * b.x;
+        }
+
+        private Vector2 ToPlanar(Vector4 point)
+        {
+            return new Vector2(point.x, point.z);
         }
 
         private Vector2 ClosestPointOnSegment(Vector2 point, Vector2 a, Vector2 b)

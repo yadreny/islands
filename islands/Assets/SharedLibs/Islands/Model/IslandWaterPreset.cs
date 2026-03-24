@@ -22,10 +22,10 @@ namespace Islands.Generation
         private float meanderWidth = 2f;
 
         public int FlowSources => flowSources;
-        public float BranchProbability => Mathf.Clamp(branchProbability, 0f, 0.35f);
-        public int RiverPointCount => Mathf.Clamp(riverPointCount, 6, 64);
-        public float MeanderLength => Mathf.Max(0.1f, meanderLength);
-        public float MeanderWidth => Mathf.Max(0f, meanderWidth);
+        public float BranchProbability => branchProbability;
+        public int RiverPointCount => riverPointCount;
+        public float MeanderLength => meanderLength;
+        public float MeanderWidth => meanderWidth;
 
         public int GetStableHashCode()
         {
