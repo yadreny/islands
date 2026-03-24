@@ -56,7 +56,7 @@ IslandPreset
 - `recommendedReliefComplexity` — типовая дробность рельефа.
 - `footprintFill` — насколько суша заполняет габарит острова.
 - `massLayoutType` — тип большой массы: `SingleCore`, `DoubleCore`, `Arc`, `ContinentalBlock`, `BrokenBlock`, `Ring`, `DrownedRelief`.
-- `reliefProfile` — тип вертикального рисунка: `CentralCone`, `TwinPeaks`, `ArcRidge`, `MultiRidge`, `BrokenMassif`, `DrownedHills`, `LowRing`.
+- `reliefProfile` — тип вертикального рисунка: `CentralCone`, `TwinPeaks`, `ArcRidge`, `MultiRidge`, `BrokenMassif`, `DrownedHills`, `LowRing`.`r`n- `riverAbundance` — общая насыщенность речной сети острова, используется гидроскелетом рек до появления полноценной симуляции рельефа и стока.
 
 ## Базовые формулы
 

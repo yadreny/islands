@@ -6,7 +6,6 @@ namespace Islands.Generation
     [CreateAssetMenu(menuName = "Islands/Island Shape Preset", fileName = "IslandShapePreset")]
     public class IslandShapePreset : SerializedScriptableObject
     {
-
         [SerializeField, BoxGroup("Reference"), MinValue(1f)]
         private float recommendedArea = 300f;
 
@@ -46,17 +45,14 @@ namespace Islands.Generation
         [SerializeField, BoxGroup("Macro"), Range(0f, 0.5f)]
         private float peninsulaStrength = 0.18f;
 
-
         [SerializeField, BoxGroup("Coast"), Range(0f, 0.5f)]
         private float directionalBias = 0.14f;
 
         [SerializeField, BoxGroup("Coast"), Range(0f, 1f)]
         private float arcCurvature;
 
-
         [SerializeField, BoxGroup("Coast"), MinValue(0)]
         private int ringBreakCount;
-
 
         public float RecommendedArea => recommendedArea;
         public float RecommendedMaxElevation => recommendedMaxElevation;
@@ -71,10 +67,8 @@ namespace Islands.Generation
         public float BayDepth => bayDepth;
         public float PeninsulaChance => peninsulaChance;
         public float PeninsulaStrength => peninsulaStrength;
-
         public float DirectionalBias => directionalBias;
         public float ArcCurvature => arcCurvature;
-
         public int RingBreakCount => ringBreakCount;
 
         public int GetStableHashCode()
@@ -95,10 +89,8 @@ namespace Islands.Generation
                 hash = hash * 31 + bayDepth.GetHashCode();
                 hash = hash * 31 + peninsulaChance.GetHashCode();
                 hash = hash * 31 + peninsulaStrength.GetHashCode();
-
                 hash = hash * 31 + directionalBias.GetHashCode();
                 hash = hash * 31 + arcCurvature.GetHashCode();
-
                 hash = hash * 31 + ringBreakCount;
                 return hash;
             }

@@ -37,3 +37,4 @@ MonoBehaviour:
   directionalBias: 0.04
   arcCurvature: 0
   ringBreakCount: 2
+  riverAbundance: 0.05

@@ -9,8 +9,8 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d755314d4b6bbd444bed11b3abddc351, type: 3}
-  m_Name: Arc Island
+  m_Script: {fileID: 11500000, guid: 8a7f32e5c4dd4bb3a1a8876f1a9d72ce, type: 3}
+  m_Name: Balanced Water
   m_EditorClassIdentifier: 
   serializationData:
     SerializedFormat: 2
@@ -21,20 +21,10 @@ MonoBehaviour:
     PrefabModificationsReferencedUnityObjects: []
     PrefabModifications: []
     SerializationNodes: []
-  recommendedArea: 420
-  recommendedMaxElevation: 1100
-  recommendedAspectRatio: 2.1
-  recommendedReliefComplexity: 0.4
-  footprintFill: 0.7
-  massLayoutType: 2
-  reliefProfile: 2
-  lobeCount: 2
-  bayCount: 2
-  lobeStrength: 0.14
-  bayDepth: 0.12
-  peninsulaChance: 0.25
-  peninsulaStrength: 0.12
-  directionalBias: 0.2
-  arcCurvature: 0.32
-  ringBreakCount: 0
-  riverAbundance: 0.55
+  riverAbundance: 0.5
+  inlandReach: 0.6
+  minimumRiverLength: 0.24
+  meanderStrength: 0.035
+  smoothingStrength: 0.72
+  mouthJitter: 0.12
+  mouthSpacing: 0.06

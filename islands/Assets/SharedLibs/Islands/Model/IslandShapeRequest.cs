@@ -10,7 +10,7 @@ namespace Islands.Generation
         [Required, AssetsOnly]
         public IslandShapePreset Preset;
 
-        [MinValue(1f)]
+        [Range(30,100)]
         public float TargetArea = 30f;
 
         [MinValue(0.1f)]

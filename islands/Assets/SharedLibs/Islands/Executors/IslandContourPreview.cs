@@ -6,11 +6,8 @@ namespace Islands.Generation
     [ExecuteAlways]
     public class IslandContourPreview : SerializedMonoBehaviour
     {
-        [SerializeField, InlineProperty, HideLabel]
-        private IslandShapeRequest request = new IslandShapeRequest();
-
-        [SerializeField, Range(64, 1024)]
-        private int contourSegments = 256;
+        [SerializeField, Required]
+        private IslandGenerationContext generationContext;
 
         [SerializeField]
         private bool regenerateAutomatically = true;
@@ -38,29 +35,23 @@ namespace Islands.Generation
         private Rect cachedBounds;
         private int cachedHash;
 
-        [Button(ButtonSizes.Large)]
         public void Regenerate()
         {
-            if (request == null)
+            if (!TryResolveContours(out var contours))
             {
-                request = new IslandShapeRequest();
-            }
-
-            if (request.Preset == null)
-            {
-                Debug.LogWarning("Island contour preview requires a preset asset.", this);
                 cachedContours = null;
                 cachedHash = 0;
                 return;
             }
 
-            cachedContours = new IslandContourGenerator(request, contourSegments).Execute();
-            cachedBounds = cachedContours != null && cachedContours.Length > 0 ? contourMath.ComputeBounds(cachedContours) : default;
+            cachedContours = contours;
+            cachedBounds = cachedContours.Length > 0 ? contourMath.ComputeBounds(cachedContours) : default;
             cachedHash = ComputeHash();
         }
 
         private void OnEnable()
         {
+            AutoBindContext();
             if (regenerateAutomatically)
             {
                 Regenerate();
@@ -69,6 +60,7 @@ namespace Islands.Generation
 
         private void OnValidate()
         {
+            AutoBindContext();
             if (regenerateAutomatically)
             {
                 Regenerate();
@@ -118,11 +110,33 @@ namespace Islands.Generation
 
         private int ComputeHash()
         {
-            unchecked
+            return generationContext != null ? generationContext.GetStableHashCode() : 17;
+        }
+
+        private bool TryResolveContours(out Vector2[][] contours)
+        {
+            AutoBindContext();
+            contours = null;
+            if (generationContext == null)
             {
-                var hash = request != null ? request.GetStableHashCode() : 17;
-                hash = hash * 31 + contourSegments;
-                return hash;
+                Debug.LogWarning("Island contour preview requires IslandGenerationContext.", this);
+                return false;
+            }
+
+            if (!generationContext.TryGetContours(out contours))
+            {
+                Debug.LogWarning("Island contour preview requires a valid preset in IslandGenerationContext.", this);
+                return false;
+            }
+
+            return true;
+        }
+
+        private void AutoBindContext()
+        {
+            if (generationContext == null)
+            {
+                generationContext = GetComponent<IslandGenerationContext>();
             }
         }
 
