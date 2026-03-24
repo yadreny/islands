@@ -152,8 +152,7 @@ namespace Islands.Generation
             int segments,
             System.Random random,
             int seed,
-            IslandShapePreset preset,
-            float coastlineComplexity)
+            IslandShapePreset preset)
         {
             var aspectTarget = Mathf.Clamp(preset.RecommendedAspectRatio, 1.02f, 2.2f);
             var aspectBlend = preset.MassLayoutType == IslandMassLayoutType.Arc ? 0.85f : 0.55f;
@@ -208,28 +207,70 @@ namespace Islands.Generation
                     -Mathf.Max(0.02f, preset.BayDepth * Mathf.Lerp(0.30f, 0.70f, NextFloat(random))));
             }
 
-            var seedX = Mathf.Abs(seed * 0.011f) + 5.7f + baseRadius * 0.13f;
-            var seedY = Mathf.Abs(seed * 0.019f) + 17.9f + baseRadius * 0.07f;
-            var breakupStrength = coastlineComplexity * 0.40f;
-
-            for (var i = 0; i < radii.Length; i++)
-            {
-                var angle01 = i / (float)radii.Length;
-                var low = (SamplePeriodicNoise(seedX, seedY, angle01, 2f) - 0.5f) * 2f;
-                var mid = (SamplePeriodicNoise(seedX + 9.1f, seedY + 4.3f, angle01, 4f) - 0.5f) * 2f;
-                var sharp = SignedPow((SamplePeriodicNoise(seedX + 15.7f, seedY + 8.9f, angle01, 7f) - 0.5f) * 2f, 1.6f);
-                var layered = low * 0.45f + mid * 0.35f + sharp * 0.20f;
-                radii[i] = Mathf.Max(radii[i] * (1f + layered * breakupStrength), baseRadius * 0.35f);
-            }
-
             var loop = RadiiToLoop(radii);
-            RotateLoop(loop, NextFloat(random) * 360f);
+            RotateLoop(loop, NextFloat(random) * 360f + (seed % 29));
             for (var i = 0; i < loop.Length; i++)
             {
                 loop[i] += center;
             }
 
             return loop;
+        }
+
+        public void ApplyNormalBreakup(Vector2[] loop, float amplitude, int seed, bool useLocalSafety = true)
+        {
+            if (loop == null || loop.Length < 3 || amplitude <= 0.0001f)
+            {
+                return;
+            }
+
+            var original = new Vector2[loop.Length];
+            Array.Copy(loop, original, loop.Length);
+
+            var safeAmplitude = useLocalSafety ? Mathf.Min(amplitude, ComputeSafeNormalBreakupAmplitude(original)) : amplitude;
+            if (safeAmplitude <= 0.0001f)
+            {
+                return;
+            }
+
+            var fractions = BuildLoopFractions(original);
+            var normals = BuildOutwardNormals(original);
+            var displacements = new float[loop.Length];
+            var seedA = Mathf.Abs(seed * 0.0131f) + 11.3f;
+            var seedB = Mathf.Abs(seed * 0.0217f) + 31.7f;
+            var seedC = Mathf.Abs(seed * 0.0379f) + 71.1f;
+            var seedD = Mathf.Abs(seed * 0.0513f) + 97.7f;
+
+            for (var i = 0; i < loop.Length; i++)
+            {
+                var distance01 = fractions[i];
+                var sectorMask = Mathf.Lerp(0.35f, 1f, SamplePeriodicNoise(seedA, seedB, distance01, 2f));
+                var roughnessMask = Mathf.Lerp(0.65f, 1.35f, SamplePeriodicNoise(seedC, seedD, distance01, 3f));
+
+                var low = (SamplePeriodicNoise(seedA + 13.1f, seedB + 7.7f, distance01, 3f) - 0.5f) * 2f;
+                var mid = SignedPow((SamplePeriodicNoise(seedB + 19.3f, seedC + 5.1f, distance01, 5f) - 0.5f) * 2f, 1.20f);
+                var high = SignedPow((SamplePeriodicNoise(seedC + 23.7f, seedA + 3.9f, distance01, 10f) - 0.5f) * 2f, 1.45f);
+                var micro = SignedPow((SamplePeriodicNoise(seedD + 29.9f, seedB + 2.7f, distance01, 18f) - 0.5f) * 2f, 1.80f);
+                var ultra = SignedPow((SamplePeriodicNoise(seedA + 41.3f, seedD + 6.9f, distance01, 28f) - 0.5f) * 2f, 2.20f);
+
+                var layered = 0f;
+                layered += low * 0.32f;
+                layered += mid * 0.28f;
+                layered += high * 0.20f;
+                layered += micro * 0.14f;
+                layered += ultra * 0.06f;
+
+                var displacement = safeAmplitude * sectorMask * roughnessMask * layered;
+                var maxOffset = safeAmplitude * 1.10f;
+                displacements[i] = Mathf.Clamp(displacement, -maxOffset, maxOffset);
+            }
+
+            SmoothRingValues(displacements, 3);
+
+            for (var i = 0; i < loop.Length; i++)
+            {
+                loop[i] = original[i] + normals[i] * displacements[i];
+            }
         }
 
         public void ScaleLoop(Vector2[] loop, float scale)
@@ -318,6 +359,104 @@ namespace Islands.Generation
 
             closed[closed.Length - 1] = loop[0];
             return closed;
+        }
+
+        private float[] BuildLoopFractions(Vector2[] loop)
+        {
+            var fractions = new float[loop.Length];
+            var totalLength = 0f;
+            for (var i = 0; i < loop.Length; i++)
+            {
+                var next = loop[(i + 1) % loop.Length];
+                totalLength += Vector2.Distance(loop[i], next);
+            }
+
+            if (totalLength <= 0.0001f)
+            {
+                return fractions;
+            }
+
+            var accumulated = 0f;
+            for (var i = 0; i < loop.Length; i++)
+            {
+                fractions[i] = accumulated / totalLength;
+                var next = loop[(i + 1) % loop.Length];
+                accumulated += Vector2.Distance(loop[i], next);
+            }
+
+            return fractions;
+        }
+
+        private float ComputeSafeNormalBreakupAmplitude(Vector2[] loop)
+        {
+            var minEdgeLength = float.MaxValue;
+            var totalEdgeLength = 0f;
+            for (var i = 0; i < loop.Length; i++)
+            {
+                var next = loop[(i + 1) % loop.Length];
+                var edgeLength = Vector2.Distance(loop[i], next);
+                minEdgeLength = Mathf.Min(minEdgeLength, edgeLength);
+                totalEdgeLength += edgeLength;
+            }
+
+            var averageEdgeLength = totalEdgeLength / Mathf.Max(1, loop.Length);
+            var min = new Vector2(float.MaxValue, float.MaxValue);
+            var max = new Vector2(float.MinValue, float.MinValue);
+            ExpandBounds(loop, ref min, ref max);
+            var bounds = Rect.MinMaxRect(min.x, min.y, max.x, max.y);
+            var minExtent = Mathf.Min(bounds.width, bounds.height);
+
+            var edgeCap = minEdgeLength * 0.30f;
+            var averageCap = averageEdgeLength * 0.42f;
+            var extentCap = minExtent * 0.08f;
+            return Mathf.Max(0.01f, Mathf.Min(edgeCap, averageCap, extentCap));
+        }
+
+        private Vector2[] BuildOutwardNormals(Vector2[] loop)
+        {
+            var normals = new Vector2[loop.Length];
+            var signedArea = ComputePolygonArea(loop);
+            var isCounterClockwise = signedArea >= 0f;
+
+            for (var i = 0; i < loop.Length; i++)
+            {
+                var prev = loop[(i - 1 + loop.Length) % loop.Length];
+                var next = loop[(i + 1) % loop.Length];
+                var tangent = next - prev;
+                if (tangent.sqrMagnitude <= 0.000001f)
+                {
+                    tangent = loop[i] - prev;
+                }
+
+                tangent = tangent.sqrMagnitude > 0.000001f ? tangent.normalized : Vector2.right;
+                normals[i] = isCounterClockwise
+                    ? new Vector2(tangent.y, -tangent.x)
+                    : new Vector2(-tangent.y, tangent.x);
+            }
+
+            return normals;
+        }
+
+        private void SmoothRingValues(float[] values, int passes)
+        {
+            if (values == null || values.Length < 3)
+            {
+                return;
+            }
+
+            var buffer = new float[values.Length];
+            for (var pass = 0; pass < passes; pass++)
+            {
+                for (var i = 0; i < values.Length; i++)
+                {
+                    var prev = values[(i - 1 + values.Length) % values.Length];
+                    var current = values[i];
+                    var next = values[(i + 1) % values.Length];
+                    buffer[i] = prev * 0.25f + current * 0.50f + next * 0.25f;
+                }
+
+                Array.Copy(buffer, values, values.Length);
+            }
         }
 
         private void ExpandBounds(Vector2[] loop, ref Vector2 min, ref Vector2 max)

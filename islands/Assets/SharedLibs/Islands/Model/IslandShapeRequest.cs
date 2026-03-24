@@ -22,7 +22,7 @@ namespace Islands.Generation
         [Range(25f, 200f)]
         public float ReliefComplexityPercent = 130f;
 
-        [Range(0,2)]
+        [Range(0,20)]
         public float CoastlineComplexity = 1f;
 
         [Range(0,20)]

@@ -166,7 +166,6 @@ namespace Islands.Generation
 
         public void Execute()
         {
-            ApplyCoastalBreakup();
             ClampRadii();
             context.OuterLoop = contourMath.RadiiToLoop(context.OuterRadii);
 
@@ -174,49 +173,6 @@ namespace Islands.Generation
             {
                 var bendAmount = context.Preset.ArcCurvature * context.MajorAxisLength * 0.24f;
                 contourMath.BendLoop(context.OuterLoop, bendAmount, context.MajorAxisLength);
-            }
-        }
-
-        private void ApplyCoastalBreakup()
-        {
-            if (context.FinalCoastlineComplexity <= 0.0001f)
-            {
-                return;
-            }
-
-            var reliefInfluence = Mathf.Lerp(0.90f, 1.95f, context.ReliefComplexity01);
-            var baseStrength = context.FinalCoastlineComplexity * 1.85f * reliefInfluence;
-            var seedA = Mathf.Abs(context.Seed * 0.0131f) + 11.3f;
-            var seedB = Mathf.Abs(context.Seed * 0.0217f) + 31.7f;
-            var seedC = Mathf.Abs(context.Seed * 0.0379f) + 71.1f;
-            var seedD = Mathf.Abs(context.Seed * 0.0513f) + 97.7f;
-
-            for (var i = 0; i < context.OuterRadii.Length; i++)
-            {
-                var angle01 = i / (float)context.OuterRadii.Length;
-                var sectorMask = Mathf.Lerp(0.20f, 1f, contourMath.SamplePeriodicNoise(seedA, seedB, angle01, 2f));
-                var roughnessMask = Mathf.Lerp(0.45f, 1.55f, contourMath.SamplePeriodicNoise(seedC, seedD, angle01, 3f));
-
-                var low = (contourMath.SamplePeriodicNoise(seedA + 13.1f, seedB + 7.7f, angle01, 3f) - 0.5f) * 2f;
-                var mid = (contourMath.SamplePeriodicNoise(seedB + 19.3f, seedC + 5.1f, angle01, 5f) - 0.5f) * 2f;
-                var high = (contourMath.SamplePeriodicNoise(seedC + 23.7f, seedA + 3.9f, angle01, 10f) - 0.5f) * 2f;
-                var micro = (contourMath.SamplePeriodicNoise(seedD + 29.9f, seedB + 2.7f, angle01, 18f) - 0.5f) * 2f;
-                var ultra = (contourMath.SamplePeriodicNoise(seedA + 41.3f, seedD + 6.9f, angle01, 28f) - 0.5f) * 2f;
-
-                var jaggedMid = contourMath.SignedPow(mid, 1.35f);
-                var jaggedHigh = contourMath.SignedPow(high, 1.55f);
-                var jaggedMicro = contourMath.SignedPow(micro, 1.80f);
-                var jaggedUltra = contourMath.SignedPow(ultra, 2.10f);
-
-                var layered = 0f;
-                layered += low * 0.24f;
-                layered += jaggedMid * 0.28f;
-                layered += jaggedHigh * 0.24f;
-                layered += jaggedMicro * 0.16f;
-                layered += jaggedUltra * 0.08f;
-
-                var finalStrength = baseStrength * sectorMask * roughnessMask;
-                context.OuterRadii[i] = Mathf.Max(context.OuterRadii[i] * (1f + layered * finalStrength), 0.01f);
             }
         }
 
@@ -283,7 +239,7 @@ namespace Islands.Generation
                 var center = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * distance;
                 var radius = Mathf.Min(context.SemiMajor, context.SemiMinor) * Mathf.Lerp(0.06f, 0.12f, contourMath.NextFloat(context.Random));
                 var isletSeed = unchecked(context.Seed * 397 + i * 997 + sampleIndex * 53);
-                context.OffshoreIslets.Add(contourMath.CreateOrganicIsletLoop(center, radius, 24, context.Random, isletSeed, context.Preset, context.FinalCoastlineComplexity));
+                context.OffshoreIslets.Add(contourMath.CreateOrganicIsletLoop(center, radius, 24, context.Random, isletSeed, context.Preset));
             }
         }
     }
@@ -301,6 +257,11 @@ namespace Islands.Generation
 
         public void Execute()
         {
+            var previewArea = Mathf.Abs(contourMath.ComputePolygonArea(context.OuterLoop));
+            var previewScale = previewArea > 0.0001f ? Mathf.Sqrt(context.TargetArea / previewArea) : 1f;
+
+            ApplyCoastlineBreakup(previewScale);
+
             var currentArea = Mathf.Abs(contourMath.ComputePolygonArea(context.OuterLoop));
             var areaScale = currentArea > 0.0001f ? Mathf.Sqrt(context.TargetArea / currentArea) : 1f;
 
@@ -323,6 +284,29 @@ namespace Islands.Generation
             for (var i = 0; i < context.OffshoreIslets.Count; i++)
             {
                 context.ClosedContours.Add(contourMath.CloseLoop(context.OffshoreIslets[i]));
+            }
+        }
+
+        private void ApplyCoastlineBreakup(float previewScale)
+        {
+            if (context.FinalCoastlineComplexity <= 0.0001f)
+            {
+                return;
+            }
+
+            var desiredAmplitude = context.FinalCoastlineComplexity * Mathf.Lerp(0.42f, 0.85f, context.ReliefComplexity01);
+            var preScaleAmplitude = desiredAmplitude / Mathf.Max(0.0001f, previewScale);
+
+            contourMath.ApplyNormalBreakup(context.OuterLoop, preScaleAmplitude, context.Seed, false);
+
+            for (var i = 0; i < context.InnerWaterContours.Count; i++)
+            {
+                contourMath.ApplyNormalBreakup(context.InnerWaterContours[i], preScaleAmplitude * 0.35f, context.Seed + 101 + i * 17, true);
+            }
+
+            for (var i = 0; i < context.OffshoreIslets.Count; i++)
+            {
+                contourMath.ApplyNormalBreakup(context.OffshoreIslets[i], preScaleAmplitude * 0.55f, context.Seed + 401 + i * 31, true);
             }
         }
     }
