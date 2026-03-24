@@ -1,0 +1,235 @@
+{
+  "main": {
+    "id": "842cca9565644fb2",
+    "type": "split",
+    "children": [
+      {
+        "id": "ca0bc5c2335c94c5",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "7cbba321a116c6cb",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "docs/obsidian/01 Генератор островов/06 Генерация формы острова.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "06 Генерация формы острова"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "6c2e514c9a05a5c0",
+    "type": "split",
+    "children": [
+      {
+        "id": "51ec62bda6ee018c",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "01ad8c66e12d071a",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Файловый менеджер"
+            }
+          },
+          {
+            "id": "71d3a76440f1e3c5",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Поиск"
+            }
+          },
+          {
+            "id": "6ad81bf8f7da625f",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Закладки"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "bf47daf37e1b0057",
+    "type": "split",
+    "children": [
+      {
+        "id": "d6179d000108398f",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "4b85a89eba03baf3",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "Добро пожаловать.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Обратные ссылки для Добро пожаловать"
+            }
+          },
+          {
+            "id": "49906521379bc480",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "Добро пожаловать.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Исходящие ссылки из Добро пожаловать"
+            }
+          },
+          {
+            "id": "a681d8abc595cbb0",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Теги"
+            }
+          },
+          {
+            "id": "4c0edc1857028af3",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "Все свойства"
+            }
+          },
+          {
+            "id": "fc40e1029cdac7a7",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "Добро пожаловать.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Структура Добро пожаловать"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Меню быстрого перехода": false,
+      "graph:Граф": false,
+      "canvas:Создать новый холст": false,
+      "daily-notes:Сегодняшняя заметка": false,
+      "templates:Вставить шаблон": false,
+      "command-palette:Открыть палитру команд": false,
+      "bases:Создать новую базу": false
+    }
+  },
+  "active": "7cbba321a116c6cb",
+  "lastOpenFiles": [
+    "islands/islands/Library/BurstCache/JIT/BurstCacheManifest.cm",
+    "islands/islands/Library/BurstCache/JIT",
+    "islands/islands/Library/BurstCache",
+    "islands/islands/Logs/shadercompiler-UnityShaderCompiler.exe11.log",
+    "islands/islands/Logs/shadercompiler-UnityShaderCompiler.exe10.log",
+    "islands/islands/Logs/shadercompiler-UnityShaderCompiler.exe2.log",
+    "islands/islands/Logs/shadercompiler-UnityShaderCompiler.exe3.log",
+    "islands/islands/Library/StateCache/MainStageHierarchy/4d/4d2a36d9faf65734f0bbefb3ee623532.json",
+    "islands/islands/Library/StateCache/MainStageHierarchy/4d",
+    "islands/islands/Library/StateCache/MainStageHierarchy",
+    "islands/islands/Library/StateCache/SceneView/8c/8cd7c613bf844de3b80696e27a479d5e.json",
+    "islands/islands/Library/PackageCache/com.unity.collab-proxy@2.12.4/Editor/Assets/Images/xlink.png",
+    "islands/islands/Library/PackageCache/com.unity.collab-proxy@2.12.4/Editor/Assets/Images/stepok@2x.png",
+    "islands/islands/Library/PackageCache/com.unity.collab-proxy@2.12.4/Editor/Assets/Images/stepok.png",
+    "islands/islands/Library/PackageCache/com.unity.collab-proxy@2.12.4/Editor/Assets/Images/step3@2x.png",
+    "islands/islands/Library/PackageCache/com.unity.collab-proxy@2.12.4/Editor/Assets/Images/step3.png",
+    "islands/islands/Library/PackageCache/com.unity.collab-proxy@2.12.4/Editor/Assets/Images/step2@2x.png",
+    "islands/islands/Library/PackageCache/com.unity.collab-proxy@2.12.4/Editor/Assets/Images/step2.png",
+    "islands/islands/Library/PackageCache/com.unity.collab-proxy@2.12.4/Editor/Assets/Images/step1@2x.png",
+    "islands/islands/Library/PackageCache/com.unity.collab-proxy@2.12.4/Editor/Assets/Images/step1.png",
+    "islands/islands/Library/PackageCache/com.unity.collab-proxy@2.12.4/Editor/Assets/Images/secondarytabclosehover.png",
+    "islands/islands/Library/PackageCache/com.unity.collab-proxy@2.12.4/Editor/_Deprecated/README.md",
+    "islands/islands/Library/PackageCache/com.unity.collab-proxy@2.12.4/Documentation~/TableOfContents.md",
+    "islands/islands/Library/PackageCache/com.unity.collab-proxy@2.12.4/Documentation~/ReconnectCB.md",
+    "islands/islands/Library/PackageCache/com.unity.collab-proxy@2.12.4/Documentation~/QuickStartGuide.md",
+    "islands/islands/Library/PackageCache/com.unity.collab-proxy@2.12.4/Documentation~/MoreHelp.md",
+    "islands/islands/Library/PackageCache/com.unity.collab-proxy@2.12.4/Documentation~/MainFeatures.md",
+    "islands/islands/Library/PackageCache/com.unity.collab-proxy@2.12.4/Documentation~/index.md",
+    "islands/islands/Library/PackageCache/com.unity.collab-proxy@2.12.4/Documentation~/Glossary.md",
+    "islands/islands/Library/PackageCache/com.unity.collab-proxy@2.12.4/Documentation~/GitUsers.md",
+    "islands/islands/Library/PackageCache/com.unity.collab-proxy@2.12.4/Documentation~/GetStartedNewRepository.md",
+    "islands/islands/Library/PackageCache/com.unity.collab-proxy@2.12.4/Documentation~/GetStartedExistingRepository.md",
+    "islands/islands/Library/PackageCache/com.unity.collab-proxy@2.12.4/Documentation~/GetStarted.md",
+    "islands/islands/Library/PackageCache/com.unity.collab-proxy@2.12.4/Documentation~/CreateProjects.md",
+    "islands/islands/Library/PackageCache/com.unity.collab-proxy@2.12.4/Documentation~/AddMembers.md",
+    "islands/islands/Library/PackageCache/com.unity.collab-proxy@2.12.4/Documentation~/AccessRemoteProjects.md",
+    "islands/islands/Library/PackageCache/com.unity.collab-proxy@2.12.4/Third Party Notices.md",
+    "islands/islands/Library/PackageCache/com.unity.collab-proxy@2.12.4/README.md",
+    "islands/islands/Library/PackageCache/com.unity.collab-proxy@2.12.4/LICENSE.md",
+    "islands/islands/Library/PackageCache/com.unity.collab-proxy@2.12.4/CHANGELOG.md",
+    "islands/islands/Library/PackageCache/com.unity.visualscripting@1.9.4/Documentation~/snippets/input-system/nodes-note-package.md",
+    "islands/islands/Library/PackageCache/com.unity.visualscripting@1.9.4/Documentation~/snippets/input-system/nodes-input-system-ports.md",
+    "islands/islands/Library/PackageCache/com.unity.visualscripting@1.9.4/Documentation~/snippets/input-system/nodes-input-system-output-trigger-port.md",
+    "islands/islands/Library/PackageCache/com.unity.visualscripting@1.9.4/Documentation~/snippets/input-system/nodes-input-action-change.md",
+    "islands/islands/Library/PackageCache/com.unity.visualscripting@1.9.4/Documentation~/snippets/input-manager/nodes-note-manual.md",
+    "islands/islands/Library/PackageCache/com.unity.visualscripting@1.9.4/Documentation~/snippets/input-manager/nodes-input-output-trigger.md"
+  ]
+}
