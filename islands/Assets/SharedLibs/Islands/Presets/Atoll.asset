@@ -1,4 +1,4 @@
-%YAML 1.1
+﻿%YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
 --- !u!114 &11400000
 MonoBehaviour:
@@ -21,7 +21,6 @@ MonoBehaviour:
     PrefabModificationsReferencedUnityObjects: []
     PrefabModifications: []
     SerializationNodes: []
-  displayName: Atoll
   recommendedArea: 60
   recommendedMaxElevation: 12
   recommendedAspectRatio: 1.2
@@ -35,8 +34,6 @@ MonoBehaviour:
   bayDepth: 0.05
   peninsulaChance: 0.1
   peninsulaStrength: 0.06
-  breakupStrength: 0.06
   directionalBias: 0.04
   arcCurvature: 0
-  satelliteChance: 0.3
   ringBreakCount: 2

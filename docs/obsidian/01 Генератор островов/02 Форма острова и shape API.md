@@ -17,6 +17,8 @@ IslandShapeRequest
 - targetMaxElevation
 - aspectPercent
 - reliefComplexityPercent
+- coastlineComplexity
+- offshoreIsletCount
 - direction
 - seed
 ```
@@ -28,6 +30,8 @@ IslandShapeRequest
 - `targetMaxElevation` — итоговая максимальная высота острова в игровых единицах.
 - `aspectPercent` — усиление типовой вытянутости пресета.
 - `reliefComplexityPercent` — усиление типовой сложности рельефа.
+- `coastlineComplexity` — абсолютная величина берегового breakup, не связанная напрямую с вертикальным рельефом и не модифицируемая пресетом: `0` даёт гладкую кромку без добавленного мелкого breakup, `1` соответствует текущему базовому breakup, значения больше `1` усиливают его дальше.
+- `offshoreIsletCount` — явное количество спутниковых островов.
 - `direction` — направление главной оси острова.
 - `seed` — сид генерации.
 
@@ -35,8 +39,6 @@ IslandShapeRequest
 
 ```text
 IslandPreset
-- id
-- displayName
 - recommendedArea
 - recommendedMaxElevation
 - recommendedAspectRatio
@@ -63,6 +65,7 @@ finalArea = targetArea
 finalMaxElevation = targetMaxElevation
 finalAspectRatio = 1 + (recommendedAspectRatio - 1) * aspectPercent / 100
 finalReliefComplexity = recommendedReliefComplexity * reliefComplexityPercent / 100
+finalCoastlineComplexity = max(0, coastlineComplexity)
 ```
 
 ## Стартовый набор пресетов
@@ -81,7 +84,7 @@ finalReliefComplexity = recommendedReliefComplexity * reliefComplexityPercent / 
 ## Принципы
 
 - Площадь и высота задаются сразу в игровых единицах.
-- Вытянутость и сложность рельефа модифицируют характер пресета, а не заменяют его.
+- Вытянутость и сложность рельефа модифицируют характер пресета, а сложность береговой линии задаётся отдельной абсолютной ручкой контекста.
 - Пресет отвечает за характер формы, а не за политический или исторический слой острова.
 
 ## Связанная заметка

@@ -33,6 +33,7 @@ namespace Islands.Generation
         [SerializeField]
         private Color boundsColor = new Color(1.00f, 0.40f, 0.20f, 1f);
 
+        private readonly IslandContourMath contourMath = new IslandContourMath();
         private Vector2[][] cachedContours;
         private Rect cachedBounds;
         private int cachedHash;
@@ -53,8 +54,8 @@ namespace Islands.Generation
                 return;
             }
 
-            cachedContours = IslandContourGenerator.GenerateClosedContours(request, contourSegments);
-            cachedBounds = cachedContours != null && cachedContours.Length > 0 ? IslandContourMath.ComputeBounds(cachedContours) : default;
+            cachedContours = new IslandContourGenerator(request, contourSegments).Execute();
+            cachedBounds = cachedContours != null && cachedContours.Length > 0 ? contourMath.ComputeBounds(cachedContours) : default;
             cachedHash = ComputeHash();
         }
 

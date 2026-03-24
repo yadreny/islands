@@ -1,4 +1,4 @@
-%YAML 1.1
+﻿%YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
 --- !u!114 &11400000
 MonoBehaviour:
@@ -21,7 +21,6 @@ MonoBehaviour:
     PrefabModificationsReferencedUnityObjects: []
     PrefabModifications: []
     SerializationNodes: []
-  displayName: Broken Remnant
   recommendedArea: 700
   recommendedMaxElevation: 700
   recommendedAspectRatio: 1.65
@@ -35,8 +34,6 @@ MonoBehaviour:
   bayDepth: 0.18
   peninsulaChance: 0.4
   peninsulaStrength: 0.18
-  breakupStrength: 0.28
   directionalBias: 0.2
   arcCurvature: 0
-  satelliteChance: 0.4
   ringBreakCount: 0

@@ -6,8 +6,6 @@ namespace Islands.Generation
     [CreateAssetMenu(menuName = "Islands/Island Shape Preset", fileName = "IslandShapePreset")]
     public class IslandShapePreset : SerializedScriptableObject
     {
-        [SerializeField, BoxGroup("Identity")]
-        private string displayName = "Old Volcanic";
 
         [SerializeField, BoxGroup("Reference"), MinValue(1f)]
         private float recommendedArea = 300f;
@@ -48,8 +46,6 @@ namespace Islands.Generation
         [SerializeField, BoxGroup("Macro"), Range(0f, 0.5f)]
         private float peninsulaStrength = 0.18f;
 
-        [SerializeField, BoxGroup("Coast"), Range(0f, 0.5f)]
-        private float breakupStrength = 0.16f;
 
         [SerializeField, BoxGroup("Coast"), Range(0f, 0.5f)]
         private float directionalBias = 0.14f;
@@ -57,13 +53,11 @@ namespace Islands.Generation
         [SerializeField, BoxGroup("Coast"), Range(0f, 1f)]
         private float arcCurvature;
 
-        [SerializeField, BoxGroup("Coast"), Range(0f, 1f)]
-        private float satelliteChance = 0.18f;
 
         [SerializeField, BoxGroup("Coast"), MinValue(0)]
         private int ringBreakCount;
 
-        public string DisplayName => displayName;
+
         public float RecommendedArea => recommendedArea;
         public float RecommendedMaxElevation => recommendedMaxElevation;
         public float RecommendedAspectRatio => recommendedAspectRatio;
@@ -77,10 +71,10 @@ namespace Islands.Generation
         public float BayDepth => bayDepth;
         public float PeninsulaChance => peninsulaChance;
         public float PeninsulaStrength => peninsulaStrength;
-        public float BreakupStrength => breakupStrength;
+
         public float DirectionalBias => directionalBias;
         public float ArcCurvature => arcCurvature;
-        public float SatelliteChance => satelliteChance;
+
         public int RingBreakCount => ringBreakCount;
 
         public int GetStableHashCode()
@@ -88,7 +82,6 @@ namespace Islands.Generation
             unchecked
             {
                 var hash = 17;
-                hash = hash * 31 + (displayName != null ? displayName.GetHashCode() : 0);
                 hash = hash * 31 + recommendedArea.GetHashCode();
                 hash = hash * 31 + recommendedMaxElevation.GetHashCode();
                 hash = hash * 31 + recommendedAspectRatio.GetHashCode();
@@ -102,10 +95,10 @@ namespace Islands.Generation
                 hash = hash * 31 + bayDepth.GetHashCode();
                 hash = hash * 31 + peninsulaChance.GetHashCode();
                 hash = hash * 31 + peninsulaStrength.GetHashCode();
-                hash = hash * 31 + breakupStrength.GetHashCode();
+
                 hash = hash * 31 + directionalBias.GetHashCode();
                 hash = hash * 31 + arcCurvature.GetHashCode();
-                hash = hash * 31 + satelliteChance.GetHashCode();
+
                 hash = hash * 31 + ringBreakCount;
                 return hash;
             }

@@ -41,3 +41,9 @@ $updated = $text.Replace($old, $new)
 - Every note in `docs/obsidian` must have at least one primary kind tag.
 - Allowed primary kind tags are: `root`, `moc`, `concept`, `reference`, `template`, `guide`, `example`, `entry`.
 - Order tags as: primary kind first, then working tags, then domain tags.
+## C# Class Style
+
+- In this repo, do not create static class runtime code for normal domain logic, generators, tasks, calculators, or helpers.
+- Prefer ordinary classes with explicit constructor dependencies.
+- Instantiate the class, pass everything it needs into the constructor, and call an instance method such as Execute().
+- Do not hide regular workflow logic behind static utility classes.
